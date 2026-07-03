@@ -1,0 +1,2305 @@
+This got me thinking of an app idea. For myself. I can create a light webapp that just uses the camera to take a picture. 
+The image is then saved on the server. Then it has some kind of mechanism to go through the images on a day by day basis. I want to use ai also to use the metadata of the image plus geo location to enrich the image with some text and other data. 
+
+The point of the app is as you said earlier. Separate the taking of the photo with reviewing it. 
+
+Recently o have been enjoying setlog. However it’s more for social sharing. And I’m also a little bit concerned with what the company behind the company will do with my photos. But I like he UX of the app where you can take a moving image (short video) each hour and share with your group. Something like this but for life logging and review your life in moving pictures. 
+
+Instead of an image maybe the app can just record a little video similar to setlog and convert it to something compressed format such as gif
+
+---
+
+I think there are actually two different ideas here. The second is stronger.
+
+Idea 1: Delayed camera
+
+A web app that:
+
+* Opens directly to the camera.
+* Capture one photo or a 2–5 second clip.
+* Uploads immediately.
+* Doesn’t let you browse today’s captures.
+* Tomorrow (or next week), they become available.
+
+This changes behavior because it removes the urge to immediately inspect every shot.
+
+The implementation is straightforward:
+
+* Camera API (getUserMedia)
+* Upload to server
+* Store EXIF + location + timestamp
+* Hide media until a configurable delay expires
+
+Idea 2: AI memory journal
+
+This is the more interesting part.
+
+Every capture becomes a memory entry, not just a file.
+
+For example:
+
+July 2, 2026
+
+📍 Kichijoji
+
+🕐 18:14
+
+🌤 29°C
+
+“You stopped for coffee after work. This was your third visit to this café this month.”
+
+Notice that none of this has to come from image recognition.
+
+You already know:
+
+* timestamp
+* GPS
+* weather
+* movement speed
+* duration at location
+* previous visits
+
+Image understanding can add things like:
+
+“Looks like ramen.”
+
+“Indoor café.”
+
+“Two people.”
+
+“Cherry blossoms.”
+
+Then an LLM combines everything into a journal entry.
+
+Even better: AI notices patterns
+
+Instead of describing one image, summarize many.
+
+For example:
+
+This week you spent more time outside than usual.
+
+You visited three new places.
+
+You haven’t taken any evening walks this week.
+
+You met Alex twice.
+
+This becomes much more valuable than image captions.
+
+Why video is better
+
+I actually think Setlog got something right.
+
+A two-second moving clip contains:
+
+* voices
+* ambient sounds
+* gestures
+* movement
+
+Years later, a tiny video is often far more evocative than a still.
+
+Storage isn’t a huge issue.
+
+For example:
+
+* 2-second H.264 clip ≈ 1–3 MB
+* 10 clips/day ≈ 20 MB
+* One year ≈ 7 GB
+
+That’s manageable.
+
+I would avoid GIF entirely.
+
+GIF:
+
+* huge file sizes
+* no audio
+* poor colors
+* outdated format
+
+Instead:
+
+* MP4 (H.264)
+* or HEVC if supported
+
+Generate a GIF or thumbnail only for previews if needed.
+
+One thing I would steal from film cameras
+
+Don’t let users delete clips immediately.
+
+Imagine:
+
+* Record.
+* Upload.
+* Gone.
+
+No retakes.
+
+No reviewing.
+
+Tomorrow you see what happened.
+
+That encourages documenting life instead of curating it.
+
+AI features I’d actually use
+
+Rather than flashy computer vision, I’d want:
+
+* “Show me every rainy day.”
+* “Every coffee shop I visited.”
+* “Every Saturday with friends.”
+* “My commute changed here.”
+* “When did I first visit this place?”
+* “Generate a monthly recap.”
+* “What was I doing around this time last year?”
+
+These leverage accumulated context over time.
+
+A small twist
+
+Instead of thinking of it as a camera app, think of it as a memory capture system.
+
+The media is just one input.
+
+Each entry could contain:
+
+* 2-second video
+* Location
+* Weather
+* Motion state (walking, driving, stationary)
+* Calendar event (optional)
+* AI summary
+* Similar memories from previous years
+
+Over months and years, that becomes a personal timeline rather than a gallery. The value grows with time, which is a property many apps lack.
+
+This also aligns with your concern about privacy. A self-hosted system means the data remains under your control while still allowing AI enrichment. If you keep the raw media on your own server and use local models when practical, you can get many of the benefits without handing your life log to a third party.
+
+---
+
+I like the idea
+I like the idea of building this. It can be a fun project
+I especially like the idea of capturing small moments that can be interesting 
+An the ai memory system sounds really cool
+However, for this to be actually useful and interesting I need a way to consume this. In a realistic way and in a long term way 
+
+---
+
+I think you’ve identified the hardest part. Capturing memories is easy. Building a habit of revisiting them is hard.
+
+Many journaling and photo apps fail because they optimize for input, not consumption.
+
+A question to guide the design:
+
+What would make me open this app in 5 years?
+
+Not to add something. To look.
+
+Timelines are surprisingly weak
+
+An endless chronological feed works when memories are fresh. Once you have 10,000 entries, it becomes overwhelming.
+
+People don’t think in timelines. They think in stories and patterns.
+
+A few consumption modes
+
+1. “On This Day”
+
+Every morning:
+
+July 2
+
+2026
+
+2027
+
+2028
+
+Just a handful of clips.
+
+This is compelling because it connects different versions of yourself.
+
+⸻
+
+2. Daily AI recap
+
+Instead of browsing everything:
+
+Today you mostly stayed in Shibuya.
+
+You walked 9 km.
+
+You met Ken after work.
+
+It rained just before sunset.
+
+Here’s your three most memorable moments.
+
+Almost like a diary you didn’t have to write.
+
+⸻
+
+3. Weekly documentary
+
+Every Sunday the AI creates a 30-second movie.
+
+Not flashy.
+
+Just:
+
+* best clips
+* date
+* places
+* subtle captions
+
+Imagine accumulating 250 of these over five years.
+
+⸻
+
+4. Themes instead of dates
+
+Search:
+
+Cafés
+
+Suddenly you see every café visit from five years.
+
+Or
+
+Autumn
+
+Or
+
+Ocean
+
+Or
+
+Parents
+
+This is where AI shines because it can classify without requiring manual tags.
+
+⸻
+
+5. “You changed.”
+
+This is the feature I’d be most excited about.
+
+The AI notices things you wouldn’t.
+
+You haven’t ridden your bike in eight months.
+
+You stopped going to that neighborhood.
+
+You started cooking much more.
+
+You smile much more in outdoor videos than indoor ones.
+
+Those observations are difficult to discover manually.
+
+⸻
+
+6. Random resurfacing
+
+Instead of social media showing “memories,” make it feel serendipitous.
+
+Two years ago, 8:17 PM.
+
+One tiny clip.
+
+Nothing else.
+
+You watch it and move on.
+
+The randomness keeps it fresh.
+
+One principle I’d follow
+
+Don’t show everything.
+
+Scarcity makes memories feel valuable.
+
+For example, every day the app surfaces:
+
+* one old memory
+* one related memory
+* one AI insight
+
+That’s enough.
+
+What I wouldn’t build
+
+I wouldn’t try to make it another photo gallery.
+
+The Photos app already does that extremely well.
+
+Instead, I’d make something closer to:
+
+“A documentary about your life that keeps writing itself.”
+
+The gallery is just the database.
+
+The experience is the narration.
+
+An idea that excites me
+
+Imagine opening the app after three years.
+
+It doesn’t show today’s captures.
+
+It says:
+
+You have 1,184 moments.
+
+Then:
+
+Here’s a story.
+
+⸻
+
+Summer Evenings
+
+From 2026–2029 you spent 43 evenings walking after work.
+
+Here are six clips.
+
+You always stopped near water.
+
+You gradually switched from coffee to beer.
+
+The last time was 17 months ago.
+
+⸻
+
+That’s not something you could have found by scrolling through thousands of videos. It’s a narrative synthesized from years of data.
+
+I think that’s where the long-term value is. The camera is just the data collection mechanism. The real product is helping your future self rediscover a life that would otherwise blur together.
+
+---
+
+I like this
+
+“A documentary about your life that keeps writing itself.”
+
+The randomness keeps it fresh.
+
+Scarcity makes memories feel valuable.
+
+—-
+I am using the app Family album (mitene) andvi really love the feature of the recap video it makes 
+And the 1 year ago movies
+
+—-
+However I think it would be interesting to make something completely different. I don’t want to feel nostalgia. I want to enjoy and learn something and then look forward 
+
+---
+
+I think that’s an important distinction.
+
+You’re saying the goal is not nostalgia.
+
+It’s reflection.
+
+Those sound similar, but they’re different products.
+
+Nostalgia asks:
+
+Remember this?
+
+Reflection asks:
+
+What does this tell you?
+
+That changes almost every design decision.
+
+A different framing
+
+Instead of:
+
+“Here’s what happened one year ago.”
+
+The app could ask:
+
+“What pattern have you been living?”
+
+Examples:
+
+You’ve spent 70% of your evenings at home this month.
+
+Every Tuesday you seem happiest.
+
+You haven’t been to a park in three weeks.
+
+The last six clips were all indoors.
+
+Those aren’t memories. They’re observations.
+
+⸻
+
+Think of the AI as an anthropologist
+
+Imagine someone silently observing your life.
+
+Not judging.
+
+Just noticing.
+
+After months it says:
+
+You seem to slow down near water.
+
+Whenever you travel, you stop recording after the first day.
+
+Most conversations happen while walking.
+
+You’re usually outside within an hour after stressful work meetings.
+
+Those are things you probably don’t consciously know.
+
+⸻
+
+Looking forward instead of backward
+
+This is the part that excites me most.
+
+Instead of ending every insight with:
+
+Remember…
+
+End with:
+
+Maybe try…
+
+For example:
+
+Your happiest clips this month happened outdoors before 8 PM.
+
+Tomorrow’s weather is good.
+
+Maybe take a walk after work.
+
+Or:
+
+You haven’t visited a new place in 19 days.
+
+Or:
+
+Last month your favorite clips contained friends.
+
+None this month.
+
+The app gently nudges instead of reminiscing.
+
+⸻
+
+The memory becomes evidence
+
+Instead of showing six videos because they’re old…
+
+The AI makes a claim.
+
+Then shows three clips as evidence.
+
+For example:
+
+You smile differently when you’re building things.
+
+[clip]
+
+[clip]
+
+[clip]
+
+Now the videos support an observation rather than being the point themselves.
+
+⸻
+
+Long-term experiments
+
+Another direction is treating life like an experiment.
+
+Imagine the AI saying:
+
+Hypothesis:
+
+You appear happier on days you leave the house before 9 AM.
+
+Then, over the next month, it quietly collects evidence.
+
+At the end:
+
+Confirmed.
+
+Or
+
+Not supported.
+
+Now your life becomes something you’re discovering, not replaying.
+
+⸻
+
+An identity graph
+
+This is probably the most ambitious idea.
+
+Instead of organizing by date…
+
+Organize by themes that emerge.
+
+Nature
+    Rivers
+    Mountains
+    Rain
+People
+    Family
+    Friends
+    Colleagues
+Movement
+    Walking
+    Cycling
+    Trains
+Creation
+    Coding
+    Cooking
+    Photography
+
+The graph evolves automatically.
+
+You don’t tag anything.
+
+Over years, you start seeing:
+
+“Creation” has become a much larger part of your life.
+
+That’s much more interesting than “here’s June 2026.”
+
+⸻
+
+One sentence that captures the vision
+
+The line I’d keep coming back to is:
+
+Don’t help me remember my life. Help me understand how I’m living it.
+
+That feels like a fundamentally different product from FamilyAlbum, Apple Photos, or Google Photos.
+
+They preserve memories.
+
+This tries to extract meaning from them.
+
+If you build toward that, the camera, AI summaries, and recap videos all become supporting features rather than the core product. The core product is a long-running conversation between your present self and your future self, grounded in real moments rather than self-reported journals.
+
+---
+
+Yes. This is going the right direction but it’s not exactly what I want.
+
+The app gently nudges instead of reminiscing.
+
+I think this is the wrong approach. I don’t want to be nagged. 
+
+Why would I be interested in these observations? These examples are very boring and not very insightful. And it need to be very very careful creating insights because they steal attention. But here is always an alternative cost. Why insight a instead of insight b?
+
+No, we can go in a different direction. Just focus on the images, the metadata, and present it without sense of nostalgia. And also without trying to tell you to be a better person. 
+
+More like this is not me. This is a person who loved a life. Almost as if it’s a museum and it’s showing images, data and facts about this person who loved 100 years ago
+
+---
+
+I think that changes the project quite a bit, and in a good way.
+
+The app stops being a coach or a journal.
+
+It becomes an archive.
+
+Not your archive.
+
+An archive of a human life.
+
+That subtle shift removes a lot of baggage.
+
+⸻
+
+Think about how museums present a person’s belongings.
+
+They don’t say:
+
+You should spend more time outside.
+
+They say:
+
+This notebook was carried daily between 1967 and 1971.
+
+It’s factual.
+
+The visitor creates the meaning.
+
+⸻
+
+So imagine opening the app and seeing:
+
+Specimen #8,421
+
+Captured on Tuesday, July 2, 2026
+
+18:14 JST
+
+Temperature: 31.2°C
+
+Duration: 2.3 seconds
+
+Location: 35.699° N, 139.570° E
+
+Ambient sound: traffic, birds, conversation
+
+Motion: walking
+
+Estimated illumination: sunset
+
+No commentary.
+
+No “you seemed happy.”
+
+Just evidence.
+
+⸻
+
+Then AI has a very different role.
+
+Not interpretation.
+
+Curation.
+
+For example, every day it creates an exhibition.
+
+Exhibition: Waiting
+
+Three clips.
+
+One at a train station.
+
+One in an elevator.
+
+One outside a restaurant.
+
+The commonality is never explicitly stated beyond the title.
+
+The viewer decides what it means.
+
+⸻
+
+Or
+
+Objects touched repeatedly
+
+Keyboard.
+
+Coffee mug.
+
+Bicycle handlebars.
+
+Door handle.
+
+Again, almost anthropological.
+
+⸻
+
+Instead of chronology, organize by unexpected dimensions.
+
+Quiet places
+
+Hands
+
+Looking down
+
+Reflections
+
+Weather transitions
+
+Red objects
+
+Windows
+
+Food prepared but not eaten
+
+The AI isn’t explaining.
+
+It’s discovering collections.
+
+⸻
+
+Even statistics become interesting if presented like a museum placard.
+
+Instead of
+
+You visited cafés 48 times.
+
+Try
+
+48 distinct café interiors were documented.
+
+Or
+
+This object appears in 312 recordings.
+
+(with a mug beside your keyboard)
+
+⸻
+
+The writing style matters enormously.
+
+No psychology.
+
+No motivation.
+
+No productivity.
+
+Almost scientific.
+
+For example:
+
+Between April and June 2027, recordings shifted from predominantly indoor to predominantly outdoor environments.
+
+Not
+
+You became more adventurous.
+
+One is observable.
+
+The other is speculation.
+
+⸻
+
+I also wouldn’t even refer to the viewer as “you.”
+
+That creates distance.
+
+Imagine:
+
+The subject carried a camera for 1,247 consecutive days.
+
+Or
+
+This location was visited 86 times over four years.
+
+It’s strangely compelling because it invites you to observe yourself as if you’re someone else.
+
+⸻
+
+This reminds me less of a photo gallery and more of natural history.
+
+Natural history museums don’t tell stories.
+
+They collect specimens.
+
+Stories emerge.
+
+⸻
+
+One idea I really like is rotating exhibitions.
+
+Not “Today’s Memory.”
+
+Instead:
+
+Exhibition 17
+
+Looking Through Glass
+
+Six clips from completely different years.
+
+A train window.
+
+An aquarium.
+
+An office building.
+
+A rainy café.
+
+A phone screen.
+
+No explanation.
+
+The viewer starts making connections that the AI never states.
+
+⸻
+
+I think there’s an underlying philosophy here:
+
+Meaning should emerge from arrangement, not explanation.
+
+That’s why museum exhibitions are powerful. The curator decides what belongs together, not what you should think.
+
+That feels like a much richer role for AI than generating captions or life advice. The AI becomes a curator with access to an impossibly large archive, constantly finding new ways to arrange the same material. After ten years of recordings, there wouldn’t be a single “correct” way to view the archive—there would be thousands of possible exhibitions, each revealing a different facet of one person’s life. That gives the archive enduring value because the material stays the same, but the perspective keeps changing.
+
+---
+
+I really like this vision! But how can it be done in practice. How would it differ from a classic memory app based on nostalgia? Give me some concretely examples 
+
+---
+
+I think the key difference is this:
+
+A nostalgia app is organized around time.
+
+Your idea is organized around observation.
+
+Time is just metadata.
+
+That sounds subtle, but it completely changes the experience.
+
+⸻
+
+Traditional memory app
+
+Open app.
+
+1 year ago today…
+
+You watch the clip.
+
+Smile.
+
+Close app.
+
+The value comes from remembering.
+
+⸻
+
+Your app
+
+Open app.
+
+Exhibition #42
+
+Thresholds
+
+Six clips.
+
+* Opening your apartment door.
+* Entering a train.
+* Walking into a café.
+* Leaving work.
+* Entering a forest.
+* Boarding a ferry.
+
+No dates.
+
+No years.
+
+Only after watching can you reveal:
+
+Recorded between 2026 and 2034.
+
+The experience is discovering a recurring motif in a life.
+
+⸻
+
+Another example
+
+Blue
+
+Not because AI detected blue pixels.
+
+Because it found moments dominated by blue.
+
+Morning sky.
+
+Ocean.
+
+Blue train seat.
+
+Computer monitor at midnight.
+
+Rain.
+
+It feels like an art exhibition.
+
+⸻
+
+Instead of “Trips”
+
+The First Five Minutes
+
+The first recording after arriving somewhere unfamiliar.
+
+Airport.
+
+Hotel.
+
+Friend’s house.
+
+Conference.
+
+Mountain trail.
+
+That’s an interesting slice of life.
+
+⸻
+
+Instead of “Summer 2028”
+
+Waiting
+
+You never realized how much of life is waiting.
+
+Elevators.
+
+Train platforms.
+
+Crosswalks.
+
+Coffee brewing.
+
+Microwave.
+
+Standing in line.
+
+It says something about being human without saying anything.
+
+⸻
+
+Instead of “Family”
+
+Hands
+
+Hands cooking.
+
+Hands typing.
+
+Hands holding a child.
+
+Hands repairing a bicycle.
+
+Hands holding a coffee.
+
+The person slowly ages through their hands.
+
+No AI narration required.
+
+⸻
+
+The AI isn’t making claims
+
+This is the biggest difference.
+
+Bad:
+
+You seemed happier this year.
+
+Impossible to verify.
+
+Good:
+
+This exhibition contains every recording where rain begins within ten seconds.
+
+Entirely objective.
+
+⸻
+
+The app becomes exploratory
+
+Imagine a button.
+
+Surprise me.
+
+Not with a random memory.
+
+With a random exhibition.
+
+Today:
+
+Escalators
+
+Tomorrow:
+
+Shadows
+
+Next week:
+
+Conversations interrupted by trains
+
+You’d never think to search for those.
+
+⸻
+
+Even facts become exhibits
+
+Instead of charts.
+
+Most revisited place that isn’t home or work
+
+A bench.
+
+Then show every recording from that bench across seven years.
+
+You don’t even remember that bench.
+
+Now it’s become part of the story.
+
+⸻
+
+Seasons without dates
+
+The First Warm Day
+
+Every year has one.
+
+People dress differently.
+
+The light changes.
+
+The atmosphere changes.
+
+The exhibition contains one clip from each year.
+
+You immediately feel the rhythm of time without ever seeing a calendar.
+
+⸻
+
+Tiny exhibitions
+
+They don’t have to be profound.
+
+Things carried.
+
+Umbrella.
+
+Groceries.
+
+Suitcase.
+
+Laptop.
+
+Birthday cake.
+
+⸻
+
+Looking up.
+
+⸻
+
+Looking down.
+
+⸻
+
+Wind.
+
+⸻
+
+Steam.
+
+⸻
+
+Empty chairs.
+
+The AI is constantly asking:
+
+“What would make an interesting collection?”
+
+Not
+
+“What lesson can I teach?”
+
+⸻
+
+Here’s the idea I find most compelling
+
+Imagine that after ten years, someone who has never met you opens the archive.
+
+Could they start to know this person?
+
+Not by reading a biography.
+
+By wandering through exhibitions.
+
+They’d begin to recognize recurring places, rituals, objects, habits, seasons, and relationships.
+
+Almost the way you come to know a novelist by reading all their books.
+
+The archive wouldn’t tell them who you were.
+
+It would let them observe who you were.
+
+⸻
+
+One design principle I would adopt is this:
+
+The app should never answer the question, “What does this mean?” It should only answer, “What else is like this?”
+
+That single constraint prevents the AI from becoming a storyteller or life coach. Its job is to find structure in the archive, not impose meaning. The meaning is left to the viewer, which is why the experience can remain interesting even after years of using it.
+
+---
+
+Now search, is there already an app, a service or something already created that is like this that I can use or is this a novel idea?
+
+---
+
+I searched specifically for products that are trying to move beyond a simple photo timeline.
+
+My conclusion is:
+
+Your overall space is not novel. Your specific philosophy appears to be.
+
+There are many AI memory apps now. Almost all of them are trying to do one of four things:
+
+* Better search
+* Better journaling
+* Better nostalgia
+* Better self-improvement
+
+I didn’t find one that treats a life as an ongoing museum exhibition.
+
+What’s already out there
+
+1. minutiae — surprisingly close
+
+This is the closest philosophically.  
+
+Its idea is:
+
+* Once per day, at a random time.
+* You have one minute to capture whatever is happening.
+* No curation.
+* Document ordinary life.
+
+I actually think this is brilliant.
+
+But it stops there.
+
+It doesn’t build exhibitions.
+It doesn’t curate.
+It doesn’t reinterpret years of material.
+
+It’s collecting.
+
+Not curating.
+
+⸻
+
+2. Memoyad
+
+This is an AI search engine for your memories.  
+
+It answers:
+
+Show me every beach trip.
+
+or
+
+Find photos of Dad in 2022.
+
+Useful.
+
+But it’s still fundamentally search.
+
+⸻
+
+3. Polarya
+
+This is almost the opposite of your idea.  
+
+It emphasizes:
+
+* preserving emotions
+* writing stories
+* memory capsules
+
+It’s asking you to explain why something mattered.
+
+Your idea is much colder.
+
+⸻
+
+4. MyMem
+
+This is trying to understand you from all your data.  
+
+It generates insights like
+
+You focus better after sleeping longer.
+
+Interesting.
+
+But again, it’s trying to optimize you.
+
+⸻
+
+5. Seyr
+
+Probably the most ambitious.  
+
+They talk about
+
+graph of your life
+
+and
+
+relationships
+
+and
+
+emotional understanding.
+
+Again:
+
+They want to explain your life.
+
+You seem to want something different.
+
+⸻
+
+What I think is genuinely different
+
+This sentence you wrote:
+
+Almost as if it’s a museum showing images, data and facts about this person who lived 100 years ago.
+
+I didn’t find anyone framing it that way.
+
+Notice what changes.
+
+Most apps ask
+
+What happened?
+
+or
+
+How did you feel?
+
+or
+
+What can we learn?
+
+Your app asks
+
+How can this archive be curated today?
+
+That sounds small.
+
+I think it’s actually a different product.
+
+⸻
+
+Imagine opening the app
+
+Not
+
+July 3, 2025
+
+Instead
+
+Exhibition 84
+
+Escaping Weather
+
+* Running into a station as rain begins.
+* Opening an umbrella.
+* Sitting in a café watching rain.
+* Looking out of a train window.
+* Steam on a window.
+
+No chronology.
+
+No explanation.
+
+Just a collection.
+
+Tomorrow the exhibition disappears forever.
+
+A new one appears.
+
+⸻
+
+Or
+
+Circular Objects
+
+Coffee mug.
+
+Train wheel.
+
+Clock.
+
+Plate.
+
+Camera lens.
+
+Moon.
+
+You never noticed how often circles appear.
+
+⸻
+
+Or
+
+Looking Away
+
+People turning away.
+
+Walking away.
+
+Looking out windows.
+
+Leaving rooms.
+
+Again, not a memory.
+
+An observation.
+
+⸻
+
+The important thing
+
+I think the AI shouldn’t be generating text.
+
+It should be making editorial decisions.
+
+There’s a huge difference.
+
+Instead of:
+
+This year you spent more time outside.
+
+It quietly says:
+
+Today’s exhibition:
+
+Green
+
+That’s it.
+
+You watch.
+
+You decide why these belong together.
+
+The AI is acting like the curator at a photography museum.
+
+⸻
+
+One idea that occurred to me
+
+Museums don’t have infinite exhibits.
+
+They rotate.
+
+Your archive could do the same.
+
+You might have 50,000 clips.
+
+Yet today the AI only shows six.
+
+Tomorrow they’re gone.
+
+You’ll probably never see that exact combination again.
+
+That creates scarcity without deleting anything.
+
+The archive is effectively infinite, but each visit is finite.
+
+I think that’s a compelling interaction.
+
+⸻
+
+One thing I’d encourage you to think about is that your novelty may not lie in AI at all.
+
+The novel part may be the curatorial philosophy.
+
+Anyone can build semantic search now. Anyone can ask an LLM to summarize photos. Those capabilities are becoming commodities.
+
+What is much harder to copy is a distinctive point of view about how a life should be experienced. You’re not proposing “better memories”; you’re proposing that a life archive should be experienced like visiting a museum whose collection is always being re-curated.
+
+That feels much closer to an art project than a productivity app. Ironically, that may also make it more enduring, because people don’t return to museums to be optimized or reminded—they return because each visit offers a different way of seeing the same collection.
+
+---
+
+Ok I am now really excited about this project now and want to build it. But first let’s critique. Why is this worth doing? Is this really novel or interesting? Take the opposite side. Be negative in order to expose any flaws in this vision and idea. 
+Currently I think that this is truly a novel idea woeryj persuing but maybe it’s not?
+
+---
+
+I actually think this critique is more important than thinking about features. Most ideas sound good when you’re imagining them. The question is: does the idea still hold up when you attack it?
+
+I’ll argue against it as strongly as I can.
+
+⸻
+
+Critique 1: It may just be an AI photo gallery
+
+This is the biggest risk.
+
+Everything we’ve discussed—exhibitions, curation, themes—could end up feeling like:
+
+“Here’s six pictures of coffee.”
+
+The novelty disappears after the first few times.
+
+The AI keeps inventing categories, but they’re arbitrary.
+
+Today’s exhibit:
+
+* Blue
+* Coffee
+* Doors
+* Looking down
+* Waiting
+
+After a while, the user realizes these are just different ways of slicing the same database.
+
+This is a serious risk.
+
+⸻
+
+Critique 2: Curation without intent is shallow
+
+Real museum exhibitions are interesting because a human curator has something to say.
+
+An AI doesn’t.
+
+It can group.
+
+It can’t care.
+
+Suppose it creates:
+
+Windows
+
+Why?
+
+Why not mirrors?
+
+Why not chairs?
+
+The choice feels random.
+
+The exhibit has no thesis.
+
+Without a thesis, it’s just clustering.
+
+⸻
+
+Critique 3: The user didn’t create the archive
+
+This one surprised me while thinking about it.
+
+Photography itself is already curation.
+
+When I take a photo, I’ve already decided:
+
+* where to stand
+* when to press the button
+* what to exclude
+
+Now the AI is curating my curation.
+
+Is that actually adding anything?
+
+Maybe not.
+
+⸻
+
+Critique 4: AI is bad at surprise
+
+Ironically.
+
+Current models tend toward the obvious.
+
+Imagine thousands of clips.
+
+The AI keeps finding:
+
+Food
+
+Friends
+
+Nature
+
+Coffee
+
+Walking
+
+Travel
+
+Those are statistically common.
+
+But humans aren’t interested in statistically common.
+
+They’re interested in weird.
+
+How do you discover weird?
+
+⸻
+
+Critique 5: The archive might not be rich enough
+
+This worries me the most.
+
+Let’s say you record two seconds every day.
+
+After one year you have 700 seconds.
+
+About twelve minutes.
+
+That’s not actually much.
+
+Will there be enough material for years of interesting reinterpretation?
+
+Maybe.
+
+Maybe not.
+
+⸻
+
+Critique 6: The hardest part isn’t AI
+
+It’s capture.
+
+You have to record.
+
+Every day.
+
+For years.
+
+That’s brutal.
+
+Every lifelogging project runs into this.
+
+The failure mode isn’t:
+
+“The AI wasn’t smart enough.”
+
+It’s
+
+“I stopped recording after three weeks.”
+
+⸻
+
+Critique 7: Museums are meaningful because they’re finite
+
+A museum chooses twenty paintings from thousands.
+
+Your AI has access to everything.
+
+Without constraints it may keep generating endless exhibitions.
+
+Then none of them matter.
+
+Scarcity only works if the AI can say
+
+“No.”
+
+⸻
+
+Critique 8: Does anyone actually revisit memories?
+
+This is uncomfortable.
+
+People say they love memories.
+
+Do they?
+
+Look at your Photos app.
+
+How often do you browse 2018?
+
+Almost never.
+
+FamilyAlbum works because children visibly change.
+
+A documentary of ordinary adulthood might simply be…
+
+ordinary.
+
+⸻
+
+Critique 9: You’re solving the wrong problem
+
+Maybe the problem isn’t consumption.
+
+Maybe it’s capture.
+
+People don’t lack ways to revisit memories.
+
+They lack memorable moments.
+
+No amount of AI fixes boring source material.
+
+⸻
+
+Critique 10: Novel doesn’t mean valuable
+
+This is the biggest philosophical criticism.
+
+Suppose nobody has built this.
+
+Why?
+
+There are two possibilities.
+
+1. Nobody thought of it.
+2. People tried it and it wasn’t compelling.
+
+Being different isn’t evidence it’s good.
+
+⸻
+
+But here’s the strongest argument for it
+
+After all those criticisms, one thing still stands out to me.
+
+You’re not excited about AI.
+
+You’re excited about curation.
+
+Those are different.
+
+When you first mentioned the museum analogy, something changed.
+
+Up until then, we were discussing features.
+
+Afterward, we started discussing how a life should be experienced.
+
+That feels deeper.
+
+⸻
+
+I think you’re actually asking the wrong question
+
+You’ve been asking:
+
+How should the AI arrange my memories?
+
+I think the more interesting question is:
+
+What makes an exhibition interesting?
+
+Notice that museums rarely organize around objects.
+
+They organize around ideas.
+
+Not:
+
+“Blue paintings.”
+
+But:
+
+“How artists represented time.”
+
+Or
+
+“The evolution of portraiture.”
+
+There’s an argument.
+
+⸻
+
+I think the missing ingredient is authorship
+
+This is the first thing I’d investigate before writing any code.
+
+Maybe the AI shouldn’t just cluster.
+
+Maybe it should develop a point of view.
+
+Not opinions about you.
+
+A perspective on the archive.
+
+For example, imagine two completely different “curators” looking at the same data:
+
+* An architect notices spaces, geometry, repetition, transitions.
+* A filmmaker notices pacing, cuts, light, silence, movement.
+* An anthropologist notices rituals, routines, tools, gestures.
+* A naturalist notices seasons, weather, daylight, animals.
+
+The archive doesn’t change.
+
+The lens changes.
+
+Now exhibitions become interesting because they’re authored from a coherent perspective rather than generated from arbitrary similarity.
+
+Ironically, I think this may be the genuinely novel part of the project. Not “AI curates your memories,” but “multiple curators interpret the same life differently.” That is much closer to how humans experience museums, literature, and history. It also answers one of the biggest critiques above: the AI isn’t pretending there is one correct interpretation. It is presenting one possible way to look at the same collection. That feels much richer than an endless stream of automatically generated categories.
+
+---
+
+Regarding 6
+I think the system can be bootstrapped by ingesting the photo and video collection I already have as some kind of controlled import job
+
+I agree that the vision is strong to tie this around curation and the analogy of a museum from a third person view. I also think it’s probably not a very compelling app that sells, that is interesting, that people want to pay for. This is very nische. And I want to do it because I find it interesting.
+
+About curators, this is really something!!! Now we are talking something practical. What is see. The system contains x amount of ai curators. Each day, or each time, an ai curator is chosen at random and will generate an exhibition based on what that ai curator finds interesting from their point of view. What makes the ai curator interesting is its ”backstory ” as you described. An architect, a filmmaker, etc. 
+How it should work in practice is that each ai curator should have a md file (or many) describing their personality and other traits that will guide their curation. Maybe there is also a general md file to explain very neutrally the input and the expected output. 
+
+Then there should also be a feedback system where me as a user will leave some direct and indirect feedback. Direct feedback is a like or dislike. And indirect feedback can be how many times did the user replay or added to saved exhibitions. 
+
+The user should be able to edit the curators
+
+---
+
+I think this is the first point in the conversation where I can see an actual product architecture instead of just a concept.
+
+The important shift is this:
+
+The AI is no longer the product. The curators are the product.
+
+That’s a much stronger framing.
+
+Why I like editable curators
+
+If you hardcode one “museum AI”, you’re making a claim:
+
+This is the right way to look at your life.
+
+That gets old.
+
+But if you have twenty curators, you’re saying:
+
+Here are twenty different ways to observe the same archive.
+
+That’s much more interesting.
+
+⸻
+
+I would actually make the curators first-class citizens
+
+Not prompts.
+
+Objects.
+
+Curator
+--------
+Name
+Occupation
+Biography
+Interests
+Blind spots
+Style guide
+Selection strategy
+Writing style
+Rules
+
+For example:
+
+Name
+-----
+Sofia Alvarez
+Occupation
+----------
+Architect
+Biography
+---------
+Former architect interested in how people move through built environments.
+Looks for
+- transitions
+- thresholds
+- corridors
+- symmetry
+- geometry
+- repetition
+Ignores
+- people
+- emotions
+- celebrations
+Tone
+Clinical.
+Writes like an exhibition placard.
+Output
+5–8 media items.
+A short exhibition introduction.
+One title.
+
+That’s much richer than one giant system prompt.
+
+⸻
+
+Even better
+
+Each curator should disagree with the others.
+
+An anthropologist should think an architect is missing the point.
+
+A filmmaker should ignore metadata almost entirely.
+
+A statistician should never look at pixels.
+
+A child should curate based on novelty.
+
+A dog could curate entirely around parks and other dogs.
+
+Now you’re getting genuinely different exhibitions.
+
+⸻
+
+I actually wouldn’t use “personality”
+
+I’d use methodology.
+
+Museums aren’t interesting because the curator has a quirky personality.
+
+They’re interesting because they have expertise.
+
+Instead of
+
+funny
+
+sarcastic
+
+I’d define
+
+what evidence matters
+
+what is ignored
+
+what constitutes a good exhibition
+
+⸻
+
+The feedback idea is interesting, but…
+
+I’d be careful.
+
+Imagine if every curator starts optimizing for likes.
+
+Eventually they all converge.
+
+The weird curators disappear.
+
+Spotify has this problem.
+
+Everything optimizes toward engagement.
+
+Your product loses diversity.
+
+⸻
+
+I’d instead separate two things.
+
+Preference
+
+“I like this curator.”
+
+vs
+
+Integrity
+
+“This curator should remain true to itself.”
+
+The architect shouldn’t suddenly become sentimental because people liked sentimental exhibitions.
+
+⸻
+
+Editable curators
+
+This is where it becomes fun.
+
+Imagine a folder:
+
+curators/
+architect.md
+anthropologist.md
+filmmaker.md
+botanist.md
+minimalist.md
+
+Users edit them.
+
+Or create their own.
+
+coffee-lover.md
+Japanese train enthusiast.md
+Street photographer.md
+Grandmother.md
+
+Suddenly this feels almost like configuring Neovim or Obsidian.
+
+People will share them.
+
+⸻
+
+Even more interesting
+
+Curators can cite evidence.
+
+Exhibition
+Waiting Rooms
+Reasoning
+I noticed several transitional spaces where movement temporarily stopped.
+Evidence
+- similarity score...
+- semantic tags...
+- location history...
+
+Not because users need to see it.
+
+But because it makes the curator feel like it actually has a methodology.
+
+⸻
+
+I think there is one more leap
+
+Right now your model is
+
+Archive
+↓
+Curator
+↓
+Exhibition
+
+I think it should become
+
+Archive
+↓
+Index
+↓
+Curator
+↓
+Exhibition
+
+The archive should never go directly into an LLM.
+
+Instead you build a memory index.
+
+The index contains things like:
+
+Objects
+Locations
+Weather
+Motion
+Time of day
+Dominant colors
+Audio events
+People
+Embeddings
+OCR
+Transcripts
+Scene descriptions
+
+Now the curator never looks through 40,000 videos.
+
+It queries the index.
+
+Exactly like a museum curator doesn’t walk into storage and inspect every artifact.
+
+⸻
+
+One critique
+
+I’d avoid adaptive prompts.
+
+I know it’s tempting.
+
+But I think this is a trap.
+
+Instead of
+
+The curator evolves.
+
+I would make versions.
+
+Architect v1
+Architect v2
+Architect v3
+
+Because then exhibitions become reproducible.
+
+Otherwise, six months later, you won’t know why today’s architect behaves differently from last year’s. Worse, if the curator is constantly optimizing based on feedback, you lose something that museums value: a stable curatorial voice. A curator should have a recognizable point of view, even if people don’t always agree with it.
+
+⸻
+
+One idea that I think could become the defining feature is this:
+
+Every exhibition should answer the question: “Why these items, and not thousands of others?”
+
+Not by exposing chain-of-thought or long reasoning, but by having a clear curatorial thesis. If an exhibition couldn’t justify its own existence, it probably shouldn’t exist. That gives you a natural quality bar: the AI isn’t rewarded for generating more exhibitions, it’s rewarded for generating exhibitions that feel inevitable once you’ve seen them. I think that’s a much stronger design principle than optimizing for engagement or novelty. It also keeps the project aligned with the museum metaphor rather than drifting into “AI-generated content.”
+
+---
+
+Repository: life-museum
+Product: Museum of Ordinary Life
+
+---
+
+Now, to be concrete, should the output, the exhibit that the ai curator makes be a website, html + css + js? I have some good experience of ai generating websites see e.g https://github.com/MrOggy85/mini-games
+
+Or what do you suggest a more stricter form factor or even looser form factor or maybe s set of choices?
+
+---
+
+I think this is probably the most important architectural decision you’ll make.
+
+My answer is:
+
+Don’t make “website” the output. Make it one possible renderer.
+
+Right now you’re thinking:
+
+Archive
+    ↓
+LLM
+    ↓
+HTML/CSS/JS
+
+I think that’s the wrong abstraction.
+
+Instead:
+
+Archive
+    ↓
+Curator
+    ↓
+Exhibition specification
+    ↓
+Renderer
+        ├── HTML
+        ├── Mobile
+        ├── PDF
+        ├── Slideshow
+        └── Video
+
+The curator should never think about HTML.
+
+It should think like a curator.
+
+⸻
+
+Imagine the output is JSON (or Markdown + frontmatter)
+
+For example:
+
+title: Thresholds
+description: >
+  A study of transitions between spaces.
+layout: gallery
+sections:
+- title: Entering
+  items:
+    - asset_182
+    - asset_912
+- title: Leaving
+  items:
+    - asset_288
+    - asset_777
+placards:
+- asset: asset_182
+  text: >
+    Apartment entrance.
+    Tokyo.
+    Morning.
+theme:
+  background: dark
+  typography: museum
+
+The renderer decides how that looks.
+
+⸻
+
+Why this matters
+
+Suppose six months from now you invent
+
+“The Film Festival Curator”
+
+Maybe they want
+
+* fullscreen
+* fade transitions
+* ambient sound
+* autoplay
+
+That’s impossible if the LLM already wrote HTML.
+
+⸻
+
+But…
+
+I do think AI-generated HTML has a place.
+
+Just not as the default.
+
+⸻
+
+Imagine there are two levels.
+
+Level 1
+
+Curator
+
+Produces
+
+* title
+* thesis
+* assets
+* captions
+* ordering
+* metadata
+
+Structured.
+
+Reliable.
+
+⸻
+
+Level 2
+
+Exhibition Designer
+
+Receives the structured exhibition.
+
+Its only job is
+
+Design a webpage suitable for this exhibition.
+
+Now HTML becomes an implementation detail.
+
+⸻
+
+Even better
+
+Separate the roles.
+
+Archive
+↓
+Curator
+↓
+Exhibition Spec
+↓
+Designer
+↓
+HTML
+
+The designer never chooses media.
+
+The curator never writes CSS.
+
+Exactly like a real museum.
+
+⸻
+
+I actually think designers become another ecosystem
+
+Imagine downloading
+
+Brutalist Theme
+Apple Keynote Theme
+MoMA Theme
+Minimal Theme
+1998 GeoCities Theme
+Museum Catalog Theme
+Japanese Gallery Theme
+
+The same exhibition can be rendered differently.
+
+⸻
+
+Or go even further
+
+Imagine the designer is itself an LLM.
+
+Prompt:
+
+Design an exhibition webpage inspired by Dieter Rams.
+
+or
+
+Inspired by Muji.
+
+or
+
+Inspired by Apple’s Human Interface Guidelines.
+
+Now you’re experimenting with presentation independently of curation.
+
+⸻
+
+I think Markdown is underrated
+
+Another possibility.
+
+The curator outputs something like
+
+# Thresholds
+This exhibition explores transitions between places.
+---
+![](asset182)
+Apartment doorway
+---
+![](asset991)
+Train platform
+---
+![](asset33)
+Forest entrance
+
+Much easier to debug.
+
+Much easier to diff.
+
+Much easier to regenerate.
+
+⸻
+
+One thing I would absolutely avoid
+
+Giving the LLM complete freedom.
+
+Build anything.
+
+Because then every exhibition becomes a software project.
+
+Sometimes it invents React.
+
+Sometimes GSAP.
+
+Sometimes Tailwind.
+
+Sometimes shaders.
+
+You’ll spend more time debugging HTML than building the museum.
+
+⸻
+
+Here’s the architecture I’d personally build
+
+I think there are actually three creative agents, each with very narrow responsibilities:
+
+Archive
+        │
+        ▼
+Indexer
+- embeddings
+- OCR
+- transcripts
+- metadata
+- scene descriptions
+        │
+        ▼
+Curator
+Produces:
+- title
+- thesis
+- selected assets
+- ordering
+- exhibition notes
+        │
+        ▼
+Exhibition Designer
+Produces:
+- layout
+- typography
+- transitions
+- interaction
+- colors
+        │
+        ▼
+Renderer
+HTML
+PDF
+Video
+Slideshow
+Print
+
+Notice how each agent is doing something a human equivalent would do. A museum curator doesn’t choose fonts. A graphic designer doesn’t decide which artifacts belong in the exhibition. A printer doesn’t redesign the catalog.
+
+One thought that might shape the project: the output of a curator should be stable enough that, if AI disappeared tomorrow, you could still render every exhibition ever created. That means the lasting artifact is the exhibition specification, not the generated HTML. HTML becomes disposable. The exhibition becomes part of the archive itself. I think that’s a much more durable foundation.
+
+
