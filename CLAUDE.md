@@ -53,7 +53,7 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
 
 ## Boundaries between roles (do not cross them)
 
-- A **curator** selects assets, writes the thesis and placards, and emits an
+- A **curator** selects captures, writes the thesis and placards, and emits an
   **Exhibition Spec**. It never writes HTML/CSS or chooses fonts.
 - A **designer** turns a spec into a presentation. It never selects or reorders
   media.

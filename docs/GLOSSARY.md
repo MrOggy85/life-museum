@@ -19,7 +19,12 @@ these terms consistently.
   `architect@v1`) that queries the index and produces exhibitions. Defined by
   methodology, not personality. See [`CURATORS.md`](CURATORS.md).
 - **Exhibition** — a small, thesis-driven arrangement of specimens (typically
-  5–8) produced by one curator. Rotates; not permanent.
+  5–8) produced by one curator. Once rendered it is kept permanently; what
+  rotates is which exhibition the gallery floor *displays*, not the exhibition
+  itself.
+- **Collection** — the permanent, ever-growing store of finished (rendered)
+  exhibitions held by the studio. Off-limits to visitors, like a museum's
+  storage; the exhibition webapp draws from it but never alters it.
 - **Thesis** — the reason an exhibition's specimens belong together. The answer to
   "why these items, and not thousands of others?" Stated as a title/short line,
   never as exposed reasoning.

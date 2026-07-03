@@ -20,9 +20,13 @@ differently."
   exhibitions reproducible and preserves a stable, recognizable curatorial voice.
   A new behavior is a new version, not a mutation of the old one.
 
-Each visit (or on schedule), a curator is chosen and produces an exhibition from
-*its* point of view. Because they run independently and disagree, the archive
-yields thousands of possible exhibitions over time.
+Production is decoupled from visits. On each scheduled studio run a curator is
+chosen (at random) and produces an exhibition from *its* point of view; the
+finished exhibition is stored permanently in the collection. What a visitor sees
+is a separate matter — the exhibition webapp decides, by daily rotation, which
+stored exhibition to display (see [`ARCHITECTURE.md`](ARCHITECTURE.md)). Because
+curators run independently and disagree, the collection yields thousands of
+possible exhibitions over time.
 
 ## Methodology, not personality
 

@@ -33,8 +33,8 @@ yet scaffolded.
 | Path          | Role                                                                 |
 | ------------- | -------------------------------------------------------------------- |
 | `capture/`    | Thin capture client — records a short clip and uploads it. Own deploy. |
-| `studio/`     | The creative agents (indexer, curators, designer). Run on a schedule. |
-| `exhibition/` | The viewer webapp — showcases a produced exhibition.                 |
+| `studio/`     | The creative agents (indexer, curators, designer) + the permanent collection of exhibitions. Run on a schedule. |
+| `exhibition/` | The viewer webapp — shows one exhibition from the collection, rotating daily. |
 
 ## Documentation
 

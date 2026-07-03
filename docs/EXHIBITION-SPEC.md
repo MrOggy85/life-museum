@@ -19,23 +19,23 @@ created: 2026-07-03
 reveal_dates: after            # withhold capture dates until after viewing
 ---
 
-![](asset_182)
+![](capture_182)
 Apartment entrance. Tokyo. Morning.
 
-![](asset_912)
+![](capture_912)
 Train platform. Dusk.
 
-![](asset_288)
+![](capture_288)
 Café doorway. Overcast.
 
-![](asset_777)
+![](capture_777)
 Forest trailhead. Midday.
 
-![](asset_040)
+![](capture_040)
 Ferry gangway. Wind.
 ```
 
-Each specimen is an image/clip reference (`asset_<id>`) followed by its
+Each specimen is an image/clip reference (`capture_<id>`) followed by its
 **placard** — a factual, third-person label (see the voice rules in
 [`../CLAUDE.md`](../CLAUDE.md)). Order in the file is the exhibition order.
 
@@ -69,19 +69,19 @@ sections:
 
 ## Entering
 
-![](asset_182)
+![](capture_182)
 Apartment entrance. Tokyo. Morning.
 
 ## Leaving
 
-![](asset_288)
+![](capture_288)
 Office lobby. Evening.
 ```
 
 ## Rules
 
 - The curator writes the spec and **only** the spec — never HTML, CSS, or layout.
-- Asset references point into the archive by ID; the spec never embeds media.
+- Capture references point into the archive by ID; the spec never embeds media.
 - Placards obey the global voice rules: third person, factual, no interpretation.
 - A spec must carry enough to be re-rendered by any designer/renderer years later
   with no model involved.

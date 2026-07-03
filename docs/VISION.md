@@ -28,7 +28,7 @@ rejecting a series of tempting, more conventional framings. Each was considered
 and discarded. (See `chatgpt-session.txt` for the full arc.)
 
 - **Not nostalgia.** No "1 year ago today," no "On This Day," no recap movies
-  designed to make you miss the past. The goal is not to remember.
+  designed to induce longing for the past. The goal is not to remember.
 - **Not a journal or a coach.** No "maybe take a walk after work," no "you
   haven't been to a park in three weeks." The app does not nag, advise, or set
   goals. Being nudged is the thing to avoid.
@@ -73,7 +73,7 @@ No commentary. No "you seemed happy." Just evidence.
 - **Hands** — hands cooking, typing, holding a child, repairing a bicycle. The
   person slowly ages through their hands. No narration required.
 - **Blue** — morning sky, ocean, a blue train seat, a monitor at midnight, rain.
-- **The First Warm Day** — one clip from each year; you feel the rhythm of time
+- **The First Warm Day** — one clip from each year; the rhythm of time is felt
   without ever seeing a calendar.
 - **Circular Objects** — coffee mug, train wheel, clock, plate, camera lens, moon.
 
@@ -85,13 +85,14 @@ after viewing ("Recorded between 2026 and 2034").
 chart, → "Most-revisited place that isn't home or work: a bench," followed by
 every clip from that bench across seven years.
 
-**Scarcity.** The archive may hold 50,000 clips; a visit shows six. Tomorrow they
-are gone and likely never recombine. The archive is effectively infinite; each
-visit is finite. Nothing is deleted — combinations simply rotate away.
+**Scarcity.** Behind the gallery sits a permanent, ever-growing collection of
+exhibitions. The floor shows only a little at a time, and it rotates each day. A
+given exhibition may not resurface for a long while. Nothing is deleted — the
+collection only grows; scarcity comes from what is *shown*, not from what is kept.
 
 **The viewer makes the meaning.** After ten years, someone who never met the
 subject could wander the exhibitions and begin to *observe* who this person was —
-the way you come to know a novelist by reading all their books.
+the way one comes to know a novelist by reading all their books.
 
 ## Honest scope
 
