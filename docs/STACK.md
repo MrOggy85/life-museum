@@ -274,6 +274,7 @@ model input**, so it does not breach the curator firewall. It records **feedback
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — responsibilities and data contracts.
 - [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part runs; the catalog
   job system.
+- [`CAPTURE.md`](CAPTURE.md) — the capture client design.
 - [`CURATORS.md`](CURATORS.md) — the curator layer the studio runs.
 - [`EXHIBITION-SPEC.md`](EXHIBITION-SPEC.md) — the artifact a curate job emits.
 - [`../CLAUDE.md`](../CLAUDE.md) — the doctrine all generated text obeys.

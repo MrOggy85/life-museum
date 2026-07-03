@@ -33,17 +33,20 @@ A minimal webapp whose only job is to feed the archive. Separate deployment.
 
 - Opens directly to the camera (`getUserMedia`).
 - Records a short clip (target 2–5 seconds).
-- Uploads immediately, with metadata: timestamp, GPS, and whatever the device
-  provides (motion state, etc.).
+- Uploads each capture to the archive with **lightweight** metadata (timestamp,
+  GPS). Richer signals (motion, colors, audio…) are *derived later by the
+  cataloguer*, not sent by the client.
 - **Freeform capture.** The subject records whenever they like, as often as they
   like — several times a day is welcome. There is no quota and no fixed schedule.
-- **Reminders, not obligations.** The client sends gentle notifications across the
-  day (morning, lunch, afternoon, evening) to prompt capture. They encourage; they
-  never nag or require.
+- **Reminders, not obligations.** The system offers gentle prompts across the day
+  (morning, lunch, afternoon, evening). They encourage; they never nag or require.
 - **No review, no browsing, no delete.** Today's captures cannot be inspected. The
   separation of capturing from reviewing is the point — it encourages documenting
   life rather than curating it.
 - Prefer real video (H.264/HEVC MP4). No GIF.
+
+The concrete design (viewfinder + shutter, upload queue, what the client sends vs.
+derives) is in [`CAPTURE.md`](CAPTURE.md).
 
 ### 2. `catalog/` — the cataloguer
 
@@ -173,6 +176,7 @@ one rather than after a year of discipline.
 - [`STACK.md`](STACK.md) — the concrete stack, storage, and data formats.
 - [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part is deployed and how
   cataloguing jobs are dispatched.
+- [`CAPTURE.md`](CAPTURE.md) — the capture client design.
 - [`CURATORS.md`](CURATORS.md) — the curator layer in detail.
 - [`EXHIBITION-SPEC.md`](EXHIBITION-SPEC.md) — the spec format.
 - [`GLOSSARY.md`](GLOSSARY.md) — terms used above.

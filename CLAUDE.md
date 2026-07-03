@@ -63,7 +63,8 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
 
 ## Repo map
 
-- `capture/` — thin capture client (own deployment). Not yet scaffolded.
+- `capture/` — thin capture client (own deployment): a viewfinder + shutter PWA
+  (see `docs/CAPTURE.md`). Not yet scaffolded.
 - `catalog/` — the cataloguer: objective indexing of the archive into a queryable
   catalog, using local models. A server-side coordinator plus a pull-based runner
   on the MacBook (see `docs/INFRASTRUCTURE.md`). Not yet scaffolded.
