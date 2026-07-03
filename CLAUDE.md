@@ -64,9 +64,13 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
 ## Repo map
 
 - `capture/` — thin capture client (own deployment). Not yet scaffolded.
-- `studio/` — indexer, curators, designer; scheduled, independent of visits.
+- `catalog/` — the cataloguer: objective indexing of the archive into a queryable
+  catalog, using local models. A server-side coordinator plus a pull-based runner
+  on the MacBook (see `docs/INFRASTRUCTURE.md`). Not yet scaffolded.
+- `studio/` — curators and designer; scheduled, independent of visits.
 - `exhibition/` — the viewer webapp. Not yet scaffolded.
-- `docs/` — the backbone. Start with `VISION.md`.
+- `docs/` — the backbone. Start with `VISION.md`; the stack and data formats are
+  in `docs/STACK.md`; deployment topology in `docs/INFRASTRUCTURE.md`.
 
 ## Conventions
 

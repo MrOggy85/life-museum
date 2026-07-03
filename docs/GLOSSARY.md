@@ -11,12 +11,28 @@ these terms consistently.
   metadata as evidence, not as a "memory."
 - **Subject** — the person whose life the archive documents. Referred to in the
   third person, never as "you."
-- **Index** — the queryable derived layer over the archive (metadata, locations,
-  weather, motion, colors, audio events, embeddings, OCR, transcripts, scene
-  descriptions). Curators query the index, not the raw archive.
-- **Indexer** — the agent that builds and maintains the index.
+- **Catalog** — the queryable, objective, **text-and-structured-only** layer
+  derived from the archive (metadata, locations, weather, motion, colors, audio
+  events, embeddings, OCR, transcripts, scene descriptions — never media). The
+  point where pixels and sound become words and numbers. Curators query the
+  catalog, not the raw archive. See [`STACK.md`](STACK.md#what-the-catalog-contains).
+- **Cataloguer** — the part that builds and maintains the catalog. Objective, not
+  creative: it records what is observably present, using **local models**
+  (transcription, vision, embeddings) so raw media never leaves the tailnet. It may
+  use a model only to observe and transcribe, never to interpret or arrange.
+  Deployed in two halves — a **coordinator** on the server and a **cataloguer
+  runner** on an intermittently-on machine. See [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
+- **Coordinator** — the deterministic, server-side half of the cataloguer. Detects
+  uncatalogued captures, publishes catalog jobs, ingests runner results, and is
+  the sole writer of the catalog. Runs no models.
+- **Cataloguer runner** — the compute half of the cataloguer, on a powerful but
+  intermittently-on machine (a MacBook). Pulls catalog jobs, runs local models, and
+  posts results back. Stateless, like a CI runner.
+- **Catalog job** — one unit of cataloguing work (a single uncatalogued capture)
+  published by the coordinator and claimed by a runner. Lifecycle:
+  `pending → claimed (leased) → done | failed`.
 - **Curator** — a first-class, editable, versioned authored perspective (e.g.
-  `architect@v1`) that queries the index and produces exhibitions. Defined by
+  `architect@v1`) that queries the catalog and produces exhibitions. Defined by
   methodology, not personality. See [`CURATORS.md`](CURATORS.md).
 - **Exhibition** — a small, thesis-driven arrangement of specimens (typically
   5–8) produced by one curator. Once rendered it is kept permanently; what

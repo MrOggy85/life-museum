@@ -56,7 +56,7 @@ Body sections:
 - **Biography / stance** — a short methodological framing (not a life story).
 - **Attends to** — the evidence this curator seeks (transitions, pacing, rituals…).
 - **Ignores** — what this curator deliberately does not consider.
-- **Selection strategy** — how it queries the index and chooses specimens.
+- **Selection strategy** — how it queries the catalog and chooses specimens.
 - **What makes a good exhibition** — its internal quality bar.
 - **Placard style** — the tone of its labels (all curators obey the global voice
   rules in [`../CLAUDE.md`](../CLAUDE.md); this refines within them).
@@ -74,7 +74,7 @@ occupation: Architect
 - **Attends to:** transitions, thresholds, corridors, symmetry, geometry,
   repetition.
 - **Ignores:** people, emotions, celebrations.
-- **Selection strategy:** query the index for scene geometry and location
+- **Selection strategy:** query the catalog for scene geometry and location
   transitions; group by spatial motif, not by date.
 - **Good exhibition:** a recurring spatial motif the subject never noticed.
 - **Placard style:** clinical, like an exhibition placard.

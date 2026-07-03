@@ -2,7 +2,8 @@
 
 The system is one **archive** feeding three independently deployed parts. This
 document describes responsibilities and data contracts only — no technology
-choices. Stack decisions are deferred to a later planning session.
+choices. The concrete stack, on-disk layout, process model, and deployment live
+in [`STACK.md`](STACK.md).
 
 ## The system at a glance
 
@@ -11,21 +12,20 @@ storage (`studio`) are off-limits to the public; the gallery floor (`exhibition`
 shows only a fraction at any time.
 
 ```
-capture ──▶ ARCHIVE ──▶ studio ──▶ COLLECTION ──▶ exhibition ──▶ visitor
-(subject)   + index     (curators,  (rendered      (gallery       │
-                         designer)   exhibitions,   floor, daily   │
-                             ▲        permanent)     rotation)     │
-                             │                                     │
-                             └──────────── feedback ◀──────────────┘
+capture ─▶ ARCHIVE ─▶ catalog ─▶ CATALOG ─▶ studio ─▶ COLLECTION ─▶ exhibition ─▶ visitor
+(subject)            (objective            (curators,             (gallery floor,   │
+                      indexing)             designer)              daily rotation)   │
+                                               ▲                                     │
+                                               └─────────── feedback ◀───────────────┘
               (informs which curator to surface / whether to author a new version)
 ```
 
-UPPERCASE = shared stores; lowercase = the three deployed parts (plus the
-subject/visitor). Two things never happen: the archive is never fed directly to an
-LLM (the index sits between), and produced exhibitions are never deleted (the
-collection only grows; scarcity lives on the floor, not in storage).
+UPPERCASE = shared stores; lowercase = the four parts (plus the subject/visitor).
+Two things never happen: a curator is never handed the raw archive (the catalog
+sits between), and produced exhibitions are never deleted (the collection only
+grows; scarcity lives on the floor, not in storage).
 
-## Three parts
+## The parts
 
 ### 1. `capture/` — the thin client
 
@@ -45,12 +45,22 @@ A minimal webapp whose only job is to feed the archive. Separate deployment.
   life rather than curating it.
 - Prefer real video (H.264/HEVC MP4). No GIF.
 
-### 2. `studio/` — the creative agents and the collection
+### 2. `catalog/` — the cataloguer
+
+The objective layer. Runs **on a schedule** as cron-invoked batch jobs (no
+server). Reads the raw archive and builds a queryable **catalog** over it —
+metadata, locations, weather, motion, dominant colors, audio events, embeddings,
+OCR, transcripts, scene descriptions. This work is deterministic and factual, not
+creative: the cataloguer records what is *observably there*, never what it means.
+It may use a model, but only to **observe and transcribe** (e.g. a scene
+description or OCR of a frame) — never to interpret or arrange. A curator consults
+the catalog rather than walking through storage.
+
+### 3. `studio/` — the creative agents and the collection
 
 Where curation happens, and where finished work is kept. Runs **on a schedule,
 independent of any user visit**, and each agent runs **independently of the
-others**. Houses the indexer, the curators, and the designer (see the pipeline
-below).
+others**. Houses the curators and the designer (see the pipeline below).
 
 Each production run selects a curator (at random) to author an exhibition, which
 is then designed, rendered, and **saved permanently** to the **collection**. Like
@@ -58,7 +68,7 @@ a museum's storage, the collection is off-limits to visitors and only grows —
 nothing is ever discarded. The exhibition webapp draws from it but cannot alter
 it.
 
-### 3. `exhibition/` — the viewer (the gallery floor)
+### 4. `exhibition/` — the viewer (the gallery floor)
 
 The webapp a visitor opens. Each day it selects, **at random**, one
 already-rendered exhibition from the studio's collection and puts it on display.
@@ -76,17 +86,20 @@ The spine of the system. Each stage mirrors a role in a real museum, and the
 boundaries between roles are strict.
 
 ```
-Archive → Indexer → Curator → Exhibition Spec → Designer → Renderer
+Archive → Cataloguer → Catalog → Curator → Exhibition Spec → Designer → Renderer
 ```
 
-- **Archive** — the raw captures plus their metadata. Never fed directly to an
-  LLM.
-- **Indexer** — builds a queryable **index** over the archive: metadata,
+- **Archive** — the raw captures plus their metadata. Never handed to a curator.
+- **Cataloguer** — builds a queryable **catalog** over the archive: metadata,
   locations, weather, motion, time of day, dominant colors, audio events,
-  embeddings, OCR, transcripts, scene descriptions. A curator queries this, just
-  as a museum curator consults the catalog rather than walking through storage.
+  embeddings, OCR, transcripts, scene descriptions. Objective, not creative — it
+  may use a model only to observe and transcribe, never to interpret. See
+  [`STACK.md`](STACK.md).
+- **Catalog** — the queryable derived layer the cataloguer produces. A curator
+  queries this, just as a museum curator consults the catalog rather than walking
+  through storage.
 - **Curator** — an authored perspective (architect, filmmaker, anthropologist…).
-  Queries the index and produces the exhibition's *content*: title, thesis,
+  Queries the catalog and produces the exhibition's *content*: title, thesis,
   selected captures, ordering, and placards. **Never writes HTML or picks fonts.**
   See [`CURATORS.md`](CURATORS.md).
 - **Exhibition Spec** — the structured, renderer-independent output (Markdown +
@@ -115,25 +128,37 @@ spec is the stable contract; renderers are constrained consumers of it.
 
 ## The shared store
 
-The three parts never talk to each other directly; they meet at shared storage.
-Conceptually there are two stores (their concrete shape — files, database, object
-storage — is a later decision):
+The four parts never talk to each other directly; they meet at shared storage.
+Conceptually there are three stores (their concrete shape is fixed in
+[`STACK.md`](STACK.md)):
 
-- **Archive + index** — raw captures, their metadata, and the derived index.
+- **Archive** — raw captures and their metadata.
+- **Catalog** — the objective, queryable layer the cataloguer derives from the
+  archive.
 - **Collection** — the finished, rendered exhibitions and their specs.
 
 The read/write contract between the parts is deliberately narrow and one-way where
 possible:
 
-| Part         | Reads                        | Writes                                   |
-| ------------ | ---------------------------- | ---------------------------------------- |
-| `capture`    | —                            | captures + metadata → **archive** (append-only) |
-| `studio`     | archive, index, feedback     | index; exhibitions → **collection** (append-only) |
-| `exhibition` | collection                   | feedback                                 |
+| Part         | Reads                | Writes                                          |
+| ------------ | -------------------- | ----------------------------------------------- |
+| `capture`    | —                    | captures + metadata → **archive** (append-only) |
+| `catalog`    | archive              | the **catalog** (derived; rebuildable)          |
+| `studio`     | catalog, feedback    | exhibitions → **collection** (append-only)      |
+| `exhibition` | collection, archive (media) | feedback                                 |
 
-Two invariants fall out of this: `capture` and `studio` only ever *add* to their
-stores (nothing is deleted), and `exhibition` can *read* the collection but never
-change it — the gallery floor cannot edit the vault.
+Invariants that fall out of this: the **archive** and **collection** are
+append-only (nothing is deleted); the **catalog** is derived and may be rebuilt
+from the archive at any time; a curator reads the catalog but never the raw
+archive; and `exhibition` can *read* the collection but never change it — the
+gallery floor cannot edit the vault.
+
+The one nuance in that table: `exhibition` streams the clips a spec references
+from the archive (read-only) to the visitor's browser. That is byte-serving to a
+**human**, never model input — so it does not breach the curator's firewall from
+the archive. The distinction that matters is not *who reads the archive* but
+*what reads it*: **no LLM ever sees raw captures.** Only the cataloguer does, and
+it runs local models (see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)).
 
 ## Bootstrapping the archive
 
@@ -145,6 +170,9 @@ one rather than after a year of discipline.
 ## Related
 
 - [`VISION.md`](VISION.md) — why the system is shaped this way.
+- [`STACK.md`](STACK.md) — the concrete stack, storage, and data formats.
+- [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part is deployed and how
+  cataloguing jobs are dispatched.
 - [`CURATORS.md`](CURATORS.md) — the curator layer in detail.
 - [`EXHIBITION-SPEC.md`](EXHIBITION-SPEC.md) — the spec format.
 - [`GLOSSARY.md`](GLOSSARY.md) — terms used above.
