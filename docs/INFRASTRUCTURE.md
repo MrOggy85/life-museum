@@ -87,7 +87,7 @@ relied on.
 | `exhibition` server | always | tens of MiB (expected) | no |
 | catalog batch (Deno) | nightly window | small | no |
 | whisper.cpp | one stage of the window | tiny/base model files are 75 / 142 MiB; runtime *TBD* | no |
-| small VLM | one stage of the window | *TBD* | no |
+| small VLM | one stage of the window | Qwen3-VL-2B: 1.8 GiB steady, 2.9–4.1 GiB peak (pre-flight on peak); LFM2-VL-450M: 0.4 / 0.85 GiB | no |
 | embeddings | one stage of the window | *TBD* | no |
 | Jeff (shared `~/jeff` service, lease-managed) | one stage of the window | 2.4 GB steady, 4.25 GB peak | no |
 | catalog MCP | per curate run | small | no |
@@ -304,12 +304,16 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
 
 ## Open questions
 
-- **Which small VLM?** The biggest unknown and the quality ceiling of the whole product.
-  Candidates in the SmolVLM / Moondream / Florence-2 class (no benchmark on this machine yet).
-  Benchmark on realistic keyframes for seconds/frame and resident memory, and judge captions
-  for *observational* wording. If none is good enough, the levers that keep the firewall are a
-  bigger local model run less often, or fewer frames per clip; sending frames to Claude would
-  break it and is not assumed.
+- **Which small VLM? — benchmarked 2026-10-01** (CPU-only, 3 threads, one keyframe at 512 px;
+  full write-up with prompts and gotchas in the operator's `claude_harness/reports/2026-10-01-vlm-benchmark-for-cataloguer.md`).
+  Primary **Qwen3-VL-2B-Instruct Q4_K_M** (+ mmproj Q8_0) via llama.cpp server: best descriptions and the only
+  candidate with correct Japanese/Korean/French OCR, 16–19 s/frame at 512 image tokens (about 11 s at 128, but OCR
+  is then unreliable). Run describe and OCR as **separate calls** (a combined prompt breaks the OCR field). Fallback
+  **LFM2-VL-450M Q8_0**: 4.1 s/frame, about 0.4 GiB, English-only OCR; use for bulk backfill or tight memory.
+  Rejected: SmolVLM-256M/500M (poor), Florence-2 (2.3 GiB, hallucinated Japanese), LFM2-VL-1.6B (about 15 s, aborted).
+  Qwen is the most interpretive, so a fixed prompt **and** a lexicon post-filter (flag or retry) are required in
+  the cataloguer. At about 10 clips/day this is minutes a night. Weights: `$DATA_ROOT/models/`. Still open: the
+  stage itself, and whether it emits an `objects` list.
 - **Decided: no weather in v1** (it would need a second cloud egress), and **`place_name`
   comes from an offline gazetteer** (coarse, fully local). Revisit weather later if wanted.
 - **Curate cadence and model.** 3/week and a mid-tier default model are assumptions. Decide from

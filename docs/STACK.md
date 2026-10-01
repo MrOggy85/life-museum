@@ -312,7 +312,8 @@ model input**, so it does not breach the curator firewall. It records **feedback
 - **Embeddings in v1** — assumed in; drop first if memory is tight (FTS + tags
   cover most queries). Needs a benchmark.
 - **Which small VLM**, and whether it emits an `objects` list in addition to a scene
-  sentence. Its quality is the ceiling of what any curator can see; unbenchmarked.
+  sentence. Its quality is the ceiling of what any curator can see. Benchmarked: Qwen3-VL-2B primary,
+  LFM2-VL-450M fallback (see `INFRASTRUCTURE.md`); weights live in `$DATA_ROOT/models/`.
 - **The tag vocabulary** Jeff answers (≤ 26 options per question) — derived from what
   curators actually ask for.
 - **Reminder delivery** — how the capture PWA sends its gentle prompts on a
