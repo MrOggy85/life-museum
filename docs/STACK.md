@@ -273,9 +273,9 @@ model input**, so it does not breach the curator firewall. It records **feedback
   which exposes **text and structured data only**:
 
   ```
-  query_catalog(filters)        # by place, time, motion, color, object …
-  search_text(query)            # FTS over transcript / scene / ocr
-  search_embeddings(text, k)    # "what else is like this?" (if enabled)
+  query_catalog(filters)        # by date, place, time of day, motion, audio, color (built); object … later
+  search_text(query)            # FTS over transcript / scene / ocr   (lands with the text stages)
+  search_embeddings(text, k)    # "what else is like this?"          (lands with the embeddings stage)
   get_specimen(id)              # the catalog record for one capture
   list_locations()              # facets for querying
   overview()                    # shape of the catalog in one call: counts, facets, date range

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "catalog": {
+      "command": "/home/oskar/.deno/bin/deno",
+      "args": [
+        "run",
+        "--allow-read=/mnt/usbssd/museum-data/catalog,/home/oskar/.cache/deno/plug",
+        "--allow-write=/mnt/usbssd/museum-data/catalog",
+        "--allow-ffi",
+        "--allow-env",
+        "/home/oskar/life-museum/catalog/mcp/main.ts"
+      ],
+      "env": {
+        "DATA_ROOT": "/mnt/usbssd/museum-data"
+      }
+    }
+  }
+}
