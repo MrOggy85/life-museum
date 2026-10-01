@@ -38,18 +38,30 @@ export async function runBatch(o: RunOptions): Promise<StageResult[]> {
       continue;
     }
     log(`${stage.name}: ${todo.length} pending`);
-    for (const c of todo) {
-      if (o.deadline && Date.now() >= o.deadline.getTime()) {
-        r.skipped = 'window closed';
-        break;
+    try {
+      await stage.setup?.();
+    } catch (e) {
+      r.skipped = `setup failed (${e instanceof Error ? e.message : String(e)})`;
+      log(`${stage.name}: skipped, ${r.skipped}`);
+      await stage.teardown?.().catch(() => {});
+      continue;
+    }
+    try {
+      for (const c of todo) {
+        if (o.deadline && Date.now() >= o.deadline.getTime()) {
+          r.skipped = 'window closed';
+          break;
+        }
+        try {
+          recordOk(o.catalog, stage, c.capture_id, await stage.run(c, o.ctx));
+          r.ok++;
+        } catch (e) {
+          recordError(o.catalog, stage, c.capture_id, e instanceof Error ? e.message : String(e));
+          r.failed++;
+        }
       }
-      try {
-        recordOk(o.catalog, stage, c.capture_id, await stage.run(c, o.ctx));
-        r.ok++;
-      } catch (e) {
-        recordError(o.catalog, stage, c.capture_id, e instanceof Error ? e.message : String(e));
-        r.failed++;
-      }
+    } finally {
+      await stage.teardown?.().catch((e) => log(`${stage.name}: teardown failed (${e})`));
     }
     log(`${stage.name}: ${r.ok} ok, ${r.failed} failed${r.skipped ? `, ${r.skipped}` : ''}`);
     if (r.skipped === 'window closed') break;

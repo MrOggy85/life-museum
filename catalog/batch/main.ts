@@ -1,6 +1,6 @@
 import { openCatalog } from '../db.ts';
 import { loadGazetteer } from '../stages/gazetteer.ts';
-import { STAGES } from '../stages/registry.ts';
+import { buildStages } from '../stages/registry.ts';
 import { acquireLock, diskReady, parseDeadline } from './preflight.ts';
 import { runBatch } from './run.ts';
 
@@ -32,7 +32,7 @@ try {
     catalog,
     archiveDb: `${DATA_ROOT}/archive/archive.sqlite`,
     archiveDir: `${DATA_ROOT}/archive`,
-    stages: STAGES,
+    stages: buildStages(DATA_ROOT),
     ctx: { gazetteer: () => (gaz ??= loadGazetteer(`${DATA_ROOT}/catalog/gazetteer`)) },
     deadline: parseDeadline(untilArg),
     log,

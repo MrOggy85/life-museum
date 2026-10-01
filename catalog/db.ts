@@ -3,6 +3,9 @@ import type { Capture, FieldValue, Stage } from './stages/mod.ts';
 
 export const MAX_ATTEMPTS = 3;
 
+/** Columns added after the first release; ALTERed in for catalogs created before them. */
+const ADDED_COLUMNS = ['scene_description', 'ocr_text', 'vlm_note'];
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS specimen (
   capture_id        TEXT PRIMARY KEY,
@@ -21,7 +24,10 @@ CREATE TABLE IF NOT EXISTS specimen (
   motion_state      TEXT,
   audio_mean_db     REAL,
   audio_peak_db     REAL,
-  audio_state       TEXT
+  audio_state       TEXT,
+  scene_description TEXT,
+  ocr_text          TEXT,
+  vlm_note          TEXT
 );
 CREATE TABLE IF NOT EXISTS stage_runs (
   capture_id    TEXT NOT NULL,
@@ -39,6 +45,8 @@ export function openCatalog(path: string): Database {
   const db = new Database(path);
   db.exec('PRAGMA journal_mode = WAL');
   db.exec(SCHEMA);
+  const have = new Set(db.prepare('PRAGMA table_info(specimen)').all<{ name: string }>().map((r) => r.name));
+  for (const col of ADDED_COLUMNS) if (!have.has(col)) db.exec(`ALTER TABLE specimen ADD COLUMN ${col} TEXT`);
   return db;
 }
 

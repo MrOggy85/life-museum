@@ -23,5 +23,9 @@ export interface Stage {
   columns: string[];
   /** Expected peak resident memory, for pre-flight. */
   peakMiB: number;
+  /** Called once before the backlog (e.g. start a model server). Throwing skips the stage for the night. */
+  setup?(): Promise<void>;
+  /** Called once after the backlog, even on failure or window close. */
+  teardown?(): Promise<void>;
   run(c: Capture, ctx: StageContext): Promise<Record<string, FieldValue>>;
 }
