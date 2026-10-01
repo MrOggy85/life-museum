@@ -2,11 +2,13 @@
 
 The concrete realization of [`ARCHITECTURE.md`](ARCHITECTURE.md): runtimes, code
 layout, on-disk data formats, and **what the catalog is made of**. It stays
-machine-agnostic — *where* each part runs and *how* cataloguing jobs are
-dispatched live in [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
+machine-agnostic — *where* each part runs, the **resource budget**, and the nightly
+cataloguing batch live in [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
 
 The guiding constraint is the product's: **keep it simple**. Few dependencies, no
-cloud services, and every exhibition re-renderable years later without a model.
+cloud services beyond curation, and every exhibition re-renderable years later
+without a model. Two budgets shape every choice: the shared machine's memory/CPU, and
+Claude spend.
 
 ## Constraints that shape the stack
 
@@ -14,10 +16,14 @@ cloud services, and every exhibition re-renderable years later without a model.
   standard library and a bare `Deno.serve` over frameworks.
 - **Curators/designer are headless Claude Code** (`claude -p`), authenticated with
   a `CLAUDE_CODE_OAUTH_TOKEN`. They see the catalog and nothing else.
-- **The cataloguer uses local models** (transcription, vision, embeddings) — so
-  raw media never leaves the tailnet, and the curator's firewall from the archive
-  is absolute. This is what makes the privacy posture hold; see
-  [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
+- **The cataloguer is local and tiered, cheapest first:** plain code (ffprobe,
+  arithmetic) → small perception models (whisper.cpp, a small vision model,
+  embeddings) → **Jeff**, a small zero-shot *text* classifier → Claude only for
+  curation. Raw media never leaves the machine, and the curator's firewall from the
+  archive is absolute. See [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#where-each-kind-of-work-goes).
+- **Models are guests on a shared machine.** Nothing model-shaped stays resident
+  when idle; they run as stage-by-stage containers inside a nightly window.
+- **Claude spend scales with exhibitions, never with captures.**
 
 ## Decisions at a glance
 
@@ -30,10 +36,10 @@ cloud services, and every exhibition re-renderable years later without a model.
 | Catalog contents  | **Text and structured data only — never media** (see below)              |
 | Exhibition specs  | Markdown + YAML frontmatter files on disk (the durable artifact)         |
 | Rendered output   | Pre-rendered HTML on disk, produced by a **deterministic** renderer       |
-| Enrichment        | **Local models** (whisper.cpp, local vision, local embeddings) — no cloud |
+| Enrichment        | **Tiered local**: code → whisper.cpp / small VLM / embeddings → Jeff (text tags) — no cloud |
 | Curators/designer | Headless Claude Code (`claude -p`)                                        |
 | Agent ↔ catalog   | Read-only Deno **MCP server** over the catalog (text/structured only)    |
-| Deployment        | Two machines over Tailscale — see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) |
+| Deployment        | **One shared machine** (odin) over Tailscale — see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) |
 
 ## The four parts (logical shapes)
 
@@ -43,7 +49,7 @@ what each part *is* in code.
 | Part         | Shape                          | Notes                                        |
 | ------------ | ------------------------------ | -------------------------------------------- |
 | `capture`    | Deno HTTP server + React PWA   | receives uploads → archive                   |
-| `catalog`    | coordinator (Deno service) + runner (Deno + local models) | see split below     |
+| `catalog`    | cron-invoked Deno batch (+ model containers it starts and stops) and a read-only MCP | sole writer of the catalog |
 | `studio`     | cron-invoked Deno scripts      | curate (`claude -p`) + deterministic render  |
 | `exhibition` | Deno HTTP server + React SPA   | daily rotation, serves the gallery           |
 
@@ -61,10 +67,11 @@ deployable, extra services as sibling dirs):
 capture/          # thin capture client — subject-facing server
   api/            # Deno: upload endpoint, reminder scheduling, serves the PWA
   client/         # React PWA: getUserMedia, record, upload
-catalog/          # the cataloguer — objective, local-model indexing
-  coordinator/    # server-side: find uncatalogued captures, publish + serve jobs,
-                  #   ingest results, sole writer of catalog.sqlite (no models)
-  runner/         # runs on the MacBook: pull jobs, run local models, post results
+catalog/          # the cataloguer — objective, local indexing
+  batch/          # nightly batch: pre-flight, then stage by stage (code → whisper →
+                  #   VLM → embeddings → Jeff); sole writer of catalog.sqlite
+  stages/         # one module per stage: what a row lacks, how to fill it, which
+                  #   model container it needs
   mcp/            # read-only MCP server over catalog.sqlite (for curators)
 studio/           # the creative part (cron batch)
   curate/         # curator run: picks a curator, runs claude -p, writes a spec
@@ -82,10 +89,11 @@ semicolons, single quotes.
 
 ## The data stores (on disk)
 
-All durable state lives under a single `/data` root **on the server**. The runner
-is stateless (temp files only). Each SQLite file has **one writer**, which keeps
-the append-only and one-way invariants from `ARCHITECTURE.md` structural rather
-than conventional.
+All durable state lives under a single data root (written `/data` below; the real path
+is chosen at scaffolding — see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#storage--backups)).
+Temp frames/audio go to a scratch dir and are deleted per item. Each SQLite file has
+**one writer**, which keeps the append-only and one-way invariants from
+`ARCHITECTURE.md` structural rather than conventional.
 
 ```
 /data
@@ -93,8 +101,7 @@ than conventional.
     2026/07/<capture_id>.mp4       # raw clips, content-addressed
     archive.sqlite                 # raw capture registry     [capture writes]
   catalog/
-    catalog.sqlite                 # derived, text/structured [coordinator writes]
-    jobs.sqlite                    # cataloguing job queue     [coordinator writes]
+    catalog.sqlite                 # derived, text/structured [catalog batch writes]
   collection/
     <exhibition_id>/
       spec.md                      # the durable artifact      [studio writes]
@@ -104,48 +111,55 @@ than conventional.
     feedback.sqlite                # preference + integrity     [exhibition writes]
 ```
 
-There are **no images or audio in the catalog** — the runner extracts frames and
+There are **no images or audio in the catalog** — the batch extracts frames and
 audio to temp files while it works and discards them; only text and numbers are
-written back. Writer/reader map:
+written. Writer/reader map:
 
 | Store             | Writer                | Readers                          |
 | ----------------- | --------------------- | -------------------------------- |
-| `archive.sqlite`  | `capture`             | `catalog` coordinator            |
-| clip files        | `capture`             | `catalog` runner (via API), `exhibition` |
-| `catalog.sqlite`  | `catalog` coordinator | `studio` (agents, via MCP)       |
-| `jobs.sqlite`     | `catalog` coordinator | — (served to runners over HTTP)  |
+| `archive.sqlite`  | `capture`             | `catalog` batch                  |
+| clip files        | `capture`             | `catalog` batch, `exhibition`    |
+| `catalog.sqlite`  | `catalog` batch       | `studio` (agents, via MCP)       |
 | `collection/`     | `studio`              | `exhibition`                     |
 | `feedback.sqlite` | `exhibition`          | `studio`                         |
 
-Backups are a single `restic`/`rsync` of `/data`; the archive and collection are
-append-only, and the catalog can be rebuilt from the archive if lost.
+There is no job queue: **pending work is derived from the catalog itself** (the captures
+that lack a stage's output). Backups: the archive, collection and feedback are
+irreplaceable and append-only; the catalog is rebuildable from the archive. All of it
+must be added to the machine's existing borg/rclone jobs.
 
 ## What the catalog contains
 
 The catalog is the point where **pixels and sound become words and numbers.** The
-cataloguer (local models) is the only thing that ever sees media; it reduces each
-capture to an objective, queryable record, and the curator reasons purely over
+cataloguer (local code and models) is the only thing that ever sees media; it reduces
+each capture to an objective, queryable record, and the curator reasons purely over
 that reduction. Nothing in the catalog is media, and nothing is interpretive.
 
-One row per capture, roughly:
+One row per capture, roughly. The comment names the **tier** that produces each field
+(0 = plain code, 1 = small perception model, 2 = Jeff; see
+[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#where-each-kind-of-work-goes)) — always the
+cheapest tier that can answer:
 
 ```
 specimen
   capture_id            # → archive
-  captured_at           # timestamp + timezone
-  lat, lon              # coordinates
-  place_name            # reverse-geocoded ("Nakameguro, Tokyo")
-  duration_seconds
-  motion_state          # still | walking | vehicle …
-  time_of_day           # dawn | morning | midday | evening | night
-  weather_temp_c
-  weather_conditions    # clear | rain | overcast …
-  dominant_colors       # [{hex, weight}, …]
-  audio_events          # [traffic, birds, speech, music, silence, …]
-  transcript            # from whisper.cpp (may be empty)
-  scene_description     # one factual sentence from the local vision model
-  ocr_text              # any legible text in frame
-  objects               # [mug, bicycle, door, keyboard, …] (optional)
+  captured_at           # timestamp + timezone                       (from the client)
+  lat, lon              # coordinates                                (from the client)
+  place_name            # reverse-geocoded; offline gazetteer vs lookup is open (tier 0)
+  duration_seconds      # ffprobe                                    (tier 0)
+  motion_state          # still | walking | vehicle … GPS speed / frame difference (tier 0)
+  time_of_day           # dawn | morning | midday | evening | night — solar position (tier 0)
+  weather_temp_c        # no local source yet — open, may be omitted in v1
+  weather_conditions    # clear | rain | overcast … — same
+  dominant_colors       # [{hex, weight}, …]                         (tier 0)
+  audio_events          # [traffic, birds, speech, music, silence, …] — loudness/silence
+                        #   by code (tier 0); labelled events need a model (open)
+  transcript            # whisper.cpp, only if speech was detected   (tier 1)
+  scene_description     # one factual sentence from the small VLM    (tier 1)
+  ocr_text              # any legible text in frame                  (tier 1)
+  tags                  # closed-vocabulary labels over the derived text,
+                        #   e.g. [doorway, threshold, hands]; NULL when unsure (tier 2, Jeff)
+  objects               # [mug, bicycle, door, keyboard, …] — optional; via tags or the VLM
 ```
 
 Plus two cross-cutting structures:
@@ -153,12 +167,18 @@ Plus two cross-cutting structures:
 - **Full-text search** (SQLite FTS5) over `scene_description`, `ocr_text`,
   `transcript`, `place_name`.
 - **Embeddings** — a vector per capture computed locally over the concatenated
-  derived text, for similarity search ("what else is like this?"). Optional in the
-  first cut.
+  derived text, for similarity search ("what else is like this?"). **Assumed in v1**
+  (a small text-embedding model is cheap next to the VLM); still the first thing to
+  drop if memory is tight, since FTS and tags cover most queries.
 
-And **provenance** on every record — which local model + version produced each
-field, the `job_id`, and `catalogued_at` — so the catalog is reproducible and can
-be selectively rebuilt when a model is upgraded.
+And **provenance per stage** on every record — which model + version produced each
+field and `catalogued_at` — so the catalog is reproducible and can be selectively
+rebuilt (one new Jeff question or one upgraded model re-runs only that stage over only
+the affected rows).
+
+**Absent is a valid value.** Jeff's near-zero confidence means "no opinion"; the
+catalog stores NULL, not a guess. Every Jeff question is tuned against a small
+hand-labelled fixture before its tag is trusted.
 
 Two consequences worth stating:
 
@@ -173,11 +193,12 @@ Two consequences worth stating:
 ## The pipeline, concretely
 
 ```
-capture ─▶ archive.sqlite ─▶ [coordinator: enqueue] ─▶ jobs.sqlite
-                                                            │
-                        (MacBook runner pulls, runs local models, posts back)
-                                                            │
-                             [coordinator: ingest] ─▶ catalog.sqlite
+capture ─▶ archive.sqlite
+                │
+                │   nightly window: pre-flight, then stage by stage
+                │   (code → whisper → VLM → embeddings → Jeff)
+                ▼
+          [catalog batch] ─▶ catalog.sqlite
                                                             │
                              [curate job] ─── claude -p + read-only MCP ───┐
                                                             │              │
@@ -191,10 +212,11 @@ capture ─▶ archive.sqlite ─▶ [coordinator: enqueue] ─▶ jobs.sqlite
                              feedback.sqlite ─▶ (read by future curate jobs)
 ```
 
-Cataloguing is **local and pull-based** — the coordinator publishes work and the
-MacBook runner drains it whenever it is powered on. The full mechanism (job
-lifecycle, leases, endpoints, resilience) is in
-[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
+Cataloguing is **local, batched and stage-major**: one process loads one model, works
+through the whole backlog, stops it, then moves on — inside a time-boxed overnight
+window, and only if the machine has the memory to spare. If a night is skipped the
+catalog merely lags. The mechanism, resource budget and failure modes are in
+[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#cataloguing-is-one-nightly-batch).
 
 ### Curation (`studio/curate`)
 
@@ -217,6 +239,12 @@ One run authors one exhibition:
 
 The agent produces **the spec and only the spec** — never HTML, never a font
 choice, and it **never touches the archive** (see below).
+
+Curation is the only metered step, so each run is bounded (`--max-turns`, capped MCP
+results), its usage is recorded in `meta.json`, the spec is voice-linted locally with a
+one-retry cap, and a spend cap stops runs. Cadence (initially ~3 a week) is decoupled
+from the gallery's daily rotation. Details in
+[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#claude-spend).
 
 ### Rendering (`studio/render`)
 
@@ -248,7 +276,11 @@ model input**, so it does not breach the curator firewall. It records **feedback
   search_embeddings(text, k)    # "what else is like this?" (if enabled)
   get_specimen(id)              # the catalog record for one capture
   list_locations()              # facets for querying
+  overview()                    # shape of the catalog in one call: counts, facets, date range
   ```
+
+  Results are **row-capped and terse** (a few dozen rows, short columns): each extra
+  turn re-reads the whole context, so cheap, small answers are what keep a run cheap.
 
   There is **no tool that returns media** (no frame, no clip, no audio) and **no
   write tool**. The MCP opens `catalog.sqlite` with a read-only handle. The agent
@@ -259,10 +291,12 @@ model input**, so it does not breach the curator firewall. It records **feedback
 
 ## Open questions (stack-level)
 
-- **Embeddings in v1** — include local text embeddings from the start, or ship
-  metadata + FTS queries first and add vector search later.
-- **Object/tag extraction** — whether the local vision model emits an `objects`
-  list in addition to a scene sentence (useful for anthropologist-style lenses).
+- **Embeddings in v1** — assumed in; drop first if memory is tight (FTS + tags
+  cover most queries). Needs a benchmark.
+- **Which small VLM**, and whether it emits an `objects` list in addition to a scene
+  sentence. Its quality is the ceiling of what any curator can see; unbenchmarked.
+- **The tag vocabulary** Jeff answers (≤ 26 options per question) — derived from what
+  curators actually ask for.
 - **Reminder delivery** — how the capture PWA sends its gentle prompts on a
   tailnet-only, no-cloud setup (web push vs. a local notifier).
 
@@ -272,8 +306,8 @@ model input**, so it does not breach the curator firewall. It records **feedback
 ## Related
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — responsibilities and data contracts.
-- [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part runs; the catalog
-  job system.
+- [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part runs; the resource
+  budget, nightly cataloguing batch and Claude cost controls.
 - [`CAPTURE.md`](CAPTURE.md) — the capture client design.
 - [`CURATORS.md`](CURATORS.md) — the curator layer the studio runs.
 - [`EXHIBITION-SPEC.md`](EXHIBITION-SPEC.md) — the artifact a curate job emits.

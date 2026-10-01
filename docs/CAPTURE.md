@@ -103,7 +103,7 @@ Consequences:
 - **No motion-sensor permission.** Motion is derived from the video, not captured
   from the accelerometer.
 - **No client-side transcode or thumbnails.** The client uploads the native
-  recording (iOS and Android differ); the **runner normalizes to MP4** with
+  recording (iOS and Android differ); the **cataloguer batch normalizes to MP4** with
   ffmpeg. The client never fights codecs, and "no GIF / prefer MP4" is enforced in
   one place.
 

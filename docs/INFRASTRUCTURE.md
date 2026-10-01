@@ -1,226 +1,291 @@
 # Infrastructure & Deployment
 
-Where each part of the system actually runs, and how the objective cataloguing
-work is dispatched to a machine that is only sometimes on. The logical design in
+Where each part of the system actually runs, and how its two scarce resources — **the
+machine's memory/CPU** and **Claude spend** — are kept under control. The logical design in
 [`ARCHITECTURE.md`](ARCHITECTURE.md) is deployment-agnostic; this document is the
 opinionated deployment of it. Code-level choices are in [`STACK.md`](STACK.md).
 
 ## Constraints
 
-- **No cloud.** Everything runs on hardware the subject owns.
-- **Private by network.** All machines sit on one **Tailscale** tailnet; nothing
-  is exposed to the public internet.
-- **An always-on server, but a modest one.** It can run web servers, SQLite, the
-  deterministic coordinator, and the (network-bound) curator, but **cannot run
-  local ML models** at useful speed.
-- **A powerful but intermittent machine** — a **MacBook Pro (M5)** — that can run
-  local ML models (whisper, vision, embeddings) but is **not always powered on**.
-- **Cron** drives the server's scheduled work; the MacBook behaves like a
-  self-hosted CI runner that pulls jobs when available.
+- **One machine: `odin`**, the always-on home server. Intel N100 (Alder Lake-N), **4 cores,
+  15 GiB RAM, no GPU**, Debian, rootful Docker (`docker -c default …`). There is no
+  second, more powerful machine.
+- **It is shared.** ~20 containers already run on it (Immich, Paperless, Mattermost,
+  Postgres, Home Assistant, Syncthing, …) plus `~/poker-ai`, which is the largest consumer
+  when it is being watched. Everything this project runs competes with them. **Memory is the
+  scarcest resource, CPU second.** On 2026-10-01 the machine had ~6 GiB available with
+  ~3.6 GiB already swapped out, and poker-ai's *idle* Jeff container held 2.1 GiB resident.
+- **No cloud, with one exception:** Claude, for curation, sees catalog *text* only. Raw media
+  never leaves the box.
+- **Private by network.** Tailscale tailnet; nothing is exposed to the public internet.
+- **Two budgets, both finite:** a *machine budget* (RAM/CPU other services need first) and a
+  *Claude budget* (money, or subscription allowance). Every design choice below is the
+  cheaper of the available options, and every expensive step has to justify itself.
 
 ## Topology
 
 ```
-          ┌──────────────────────── Tailscale tailnet ────────────────────────┐
-          │                                                                    │
-   subject's phone ──HTTPS──▶  SERVER (always on)                MacBook Pro M5 (intermittent)
-   (capture PWA)               ├─ capture      (Deno server)     └─ catalog runner (Deno)
-                               ├─ exhibition   (Deno server)         ├─ ffmpeg
-   visitor's browser ─HTTPS─▶  ├─ catalog coordinator (Deno)         ├─ whisper.cpp
-                               ├─ catalog MCP  (read-only)           ├─ local vision model
-                               ├─ studio       (cron: curate/render) └─ local embeddings
-                               └─ /data (archive, catalog, collection, feedback)
-                                        │        ▲
-                                        │        │ pull jobs / download clip / post results
-                                        └────────┘  (HTTP over the tailnet)
-                                        │
-                                        └──HTTPS──▶ Anthropic API   ← the ONLY cloud egress
-                                                    (curator reads catalog TEXT only)
+ subject's phone ─HTTPS (Tailscale Service)─▶  odin  (this machine, always on)
+ visitor's browser ───────HTTPS───────────▶    ├─ capture      (Deno server)
+                                               ├─ exhibition   (Deno server)
+                                               ├─ catalog      (cron batch, nightly window)
+                                               │    └─ model containers, started and stopped
+                                               │       per stage: whisper · small VLM ·
+                                               │       embeddings · Jeff
+                                               ├─ catalog MCP  (read-only, per curate run)
+                                               ├─ studio       (cron: curate / render)
+                                               └─ data root (archive, catalog, collection, feedback)
+                                                        │
+                                                        └──HTTPS──▶ Anthropic API  ← the ONLY cloud egress
+                                                                    (curator reads catalog TEXT only)
 ```
 
-## Compute placement
+## Where each kind of work goes
 
-| Component               | Machine       | Always on? | Talks to cloud?        |
-| ----------------------- | ------------- | ---------- | ---------------------- |
-| `capture` server        | server        | yes        | no                     |
-| `exhibition` server     | server        | yes        | no                     |
-| catalog **coordinator** | server        | yes        | no                     |
-| catalog **MCP**         | server        | per curate | no                     |
-| `studio` curate/render  | server (cron) | host is    | **yes** (Anthropic)    |
-| catalog **runner**      | MacBook M5    | no         | no (local models only) |
+**Volume work is local; judgement work is Claude.** Cataloguing is done once per capture
+(thousands of items, latency-tolerant, needs to see pixels). Curation is done once per
+exhibition (a handful of items, needs taste, never needs to see pixels). That split makes
+costs scale predictably: **local compute scales with the archive; Claude spend scales with
+the number of exhibitions and never with the archive's size.**
 
-Two facts fall out of this table and define the whole posture:
+Within local work, always use the cheapest tier that can answer:
 
-- **Only the curator reaches the cloud**, and it sends the catalog's *text*, never
-  media. Local cataloguing on the MacBook is what earns that guarantee.
-- **The MacBook holds no durable state.** All `/data` lives on the server; the
-  runner is a stateless worker. Losing or wiping the MacBook loses nothing.
+| Tier | What | Cost to the machine | Used for |
+| ---- | ---- | ------------------- | -------- |
+| 0 | **Plain code** — `ffprobe`/`ffmpeg`, arithmetic, SQL | negligible | normalising to MP4, duration, `time_of_day` (solar position from timestamp + coordinates), dominant colors, loudness/silence, motion (GPS speed between captures, frame difference), speech-present gate |
+| 1 | **Small perception models** — whisper.cpp, a small vision-language model, a small embedding model | hundreds of MiB each *(VLM and embeddings: to be benchmarked)*; seconds per item | transcript (only clips where speech was detected), `scene_description` + OCR from a keyframe, embeddings |
+| 2 | **Jeff** — purpose-trained zero-shot *text* classifier | **4.25 GB peak, ~2.4 GB resident, 3.7 s per ~200-token decision at 3 cores** (measured by poker-ai) | closed-vocabulary tags over the text tier 1 produced, in one forward pass per question |
+| 3 | **Claude** | money / allowance, no RAM | curation only: choose, order, write the thesis and placards |
 
-## Why the cataloguer is split across two machines
+Rules of thumb that fall out of poker-ai's measurements (see
+[`~/poker-ai/reports/`](file:///home/oskar/poker-ai/reports)):
 
-Cataloguing is the only ML-heavy work, and it is **latency-tolerant** — a capture
-does not need to be catalogued the instant it lands. That makes it a perfect fit
-for an intermittent, pull-based worker. Curation, by contrast, is *not* local
-compute at all: it calls the Anthropic API, so it belongs on the always-on server
-next to its network egress and the token.
+- **A deterministic rule beats a small model at what it can express.** In poker-ai a
+  hand-written rule bot scored 12/12 against Jeff's 9/12. So anything code can compute
+  (`time_of_day`, `motion_state`, colors) is tier 0, never tier 2.
+- **A small general model is not a substitute for Jeff.** Qwen2.5-0.5B read as a classifier
+  answered the *label* rather than the question (the answer flipped with option order); the
+  fine-tune is what makes Jeff work. Consequently **no general 0.5B text model has a job in
+  this project** — it would cost memory to be unreliable. Small models here are *perception*
+  models (speech, vision, embeddings), not judges.
+- **Jeff reads text, not video.** It classifies what tier 1 wrote down. That is the point: a
+  new question ("does this scene contain a doorway?") is one cheap forward pass over existing
+  text, instead of another expensive vision-model run over pixels.
+- **Claude cannot be the perception tier.** The firewall (`STACK.md`) forbids sending media.
+  So the local vision model's quality is the ceiling on everything a curator can ever see —
+  see [Open questions](#open-questions).
 
-So the `catalog` part is one role in two halves (see [`STACK.md`](STACK.md) for
-the folders):
+## Resource budget
 
-- **Coordinator** — server-side, **deterministic, runs no models.** It watches the
-  archive for uncatalogued captures, publishes a job per capture, hands jobs to
-  runners, ingests their results, and is the **sole writer** of `catalog.sqlite`.
-- **Runner** — on the MacBook. When powered on, it pulls jobs, downloads the clip,
-  runs the local models, and posts back a text/structured record. Like a
-  `github-actions` self-hosted runner: stateless, disposable, one at a time.
+Compute placement, and what each part costs while it runs. Anything marked *TBD* has not been
+measured on this machine and must be benchmarked (as poker-ai's `make bench` did) before it is
+relied on.
 
-## The catalog as a pull-based job system
+| Component | Runs | Resident while running | Cloud? |
+| --------- | ---- | ---------------------- | ------ |
+| `capture` server | always | tens of MiB (expected; poker-ai's server is 41 MiB) | no |
+| `exhibition` server | always | tens of MiB (expected) | no |
+| catalog batch (Deno) | nightly window | small | no |
+| whisper.cpp | one stage of the window | tiny/base model files are 75 / 142 MiB; runtime *TBD* | no |
+| small VLM | one stage of the window | *TBD* | no |
+| embeddings | one stage of the window | *TBD* | no |
+| Jeff (own container) | one stage of the window | 2.4 GB steady, 4.25 GB peak | no |
+| catalog MCP | per curate run | small | no |
+| `studio` curate | a few times a week | one `claude` CLI process, *TBD* | **yes** |
+| `studio` render | daily, seconds | small | no |
 
-### Job lifecycle
+The rules that keep this from disturbing the other services:
+
+1. **Nothing model-shaped is resident when idle.** Model servers are containers the batch
+   starts and stops. This matters more than CPU limits: poker-ai measured that its idle gate
+   saves CPU but *not* memory — Jeff holds ~2.1 GiB while nobody is watching (re-confirmed
+   today). Memory held while idle is the cost that actually hurts here.
+2. **Stage-major, never capture-major.** Run one model over the whole backlog, stop it, then
+   start the next — rather than loading every model for each capture. Peak memory is the
+   *largest* model, not their sum, and model load time is paid once per night, not once per
+   clip.
+3. **Pre-flight before every window; skip rather than squeeze.** The batch does nothing if
+   - poker-ai's model containers are up (a watched tournament holds ~2 of the 4 cores), or
+   - `MemAvailable` is below `peak(next model) + 2 GiB` (the margin is a starting value), or
+   - another instance holds the lock.
+
+   A skipped night costs nothing: the catalog just lags (see below).
+4. **Three threads, low priority.** Measured for Jeff: 2 threads = 8.3 s, **3 threads = 3.7 s**,
+   4 threads = 3.1 s. In core-seconds that is 16.6 vs **11.1** vs 12.4 — so 3 threads is both
+   faster *and* cheaper than 2; "use fewer cores to be polite" is a false economy past that
+   cliff. Run model containers with `--cpus=3`, `OMP_NUM_THREADS=3` (torch ignores the cgroup
+   quota), and a low `--cpu-shares` so Immich, Paperless and Mattermost win any contention.
+   Whisper and the VLM need their own thread sweep.
+5. **Jeff is a single-request server and poker-ai owns its instance.** It rejects a second
+   concurrent request with `529`, and poker-ai treats any 529 as evidence of a stray caller.
+   So life-museum **never talks to poker-ai's Jeff**. It runs *its own container* (own name,
+   own port — 8777, 8778 and 8780–8782 are taken) **from the existing `poker-jeff:latest`
+   image** (6.49 GB; a second copy would cost disk for nothing). That image already carries
+   poker-ai's hard-won fixes (CPU torch, `fla` removed, no `uv run`). If poker-ai is ever
+   retired, keep that image or rebuild it from `~/poker-ai/models/jeff/`.
+6. **Time-boxed window.** The batch takes a `--deadline`; at the deadline it finishes the
+   current item and exits. Initial window **01:00–04:30 JST**, chosen to end before the
+   existing 05:00 (Sunday) / 06:00 / 07:30 cron jobs.
+7. **Disk is a budget too.** `/home` is 76% used (95 GiB free). The archive is ~7 GB/year at
+   10 clips/day (estimate from the ideation transcript); the *bootstrap import* of the existing
+   photo/video library is unsized — measure it before importing. Temp frames and audio are
+   written to a scratch dir and deleted per item.
+
+## Cataloguing is one nightly batch
+
+On two machines this needed a coordinator, a pull-based runner, leases and an HTTP job API.
+On one machine all of that disappears: the catalog batch reads clips straight from disk and is
+the **sole writer of `catalog.sqlite`** by construction (one process, one lock).
 
 ```
-   coordinator                                   runner (MacBook)
-   ───────────                                   ────────────────
-1. scan archive.sqlite for captures with
-   no catalog record and no open job
-2. INSERT job (state=pending) ─────────────────▶ jobs.sqlite
-                                          ┌──── 3. GET /catalog/jobs/next
-   4. atomically mark CLAIMED + lease ────┘        (only when the Mac is on)
-      (runner_id, expires_at); return job ───────▶
-                                                 5. GET /catalog/captures/{id}/media
-   6. stream the clip over the tailnet ─────────▶   (download to temp)
-                                                 7. run ffmpeg + whisper + vision +
-                                                    embeddings locally → record{}
-                                          ┌──── 8. POST /catalog/jobs/{id}/result
-   9. validate; WRITE record to           │        (or /fail on error)
-      catalog.sqlite; mark DONE ◀─────────┘
+cron, 01:00 ─▶ pre-flight (rule 3) ─▶ take lock
+  stage 0   code        every new capture: normalise to MP4, ffprobe, colors, loudness,
+                        motion, time_of_day, speech-present gate           (no model running)
+  stage 1a  whisper     only captures where speech was detected            ─ stop container
+  stage 1b  VLM         keyframe → scene_description (+ OCR if text seen)  ─ stop container
+  stage 1c  embeddings  over the derived text                              ─ stop container
+  stage 2   Jeff        closed-vocabulary tags over the derived text       ─ stop container
+  deadline or backlog empty ─▶ release lock
 ```
 
-**States:** `pending → claimed (leased) → done | failed`. A claim carries a
-**lease** (`runner_id`, `expires_at`). If the MacBook powers off mid-job, the
-lease expires and the coordinator returns the job to `pending`, so it is retried
-the next time any runner is available. `failed` is reserved for repeated hard
-errors (bad media, model crash) after N retries, and is surfaced for inspection
-rather than retried forever.
+- **A stage is "the captures that lack that stage's output".** There is no separate queue:
+  pending work is derivable from the catalog itself. Each stage writes its result **and its
+  provenance** (model + version, `catalogued_at`) in one transaction, so it is idempotent and
+  a crash or the deadline loses at most the item in flight.
+- **A capture that fails a stage N times is marked `failed` for that stage and surfaced**,
+  not retried forever. Bad media is an event worth looking at, not a loop.
+- **Stages are ordered by dependency**, not by cost: embeddings and Jeff read text that 1a/1b
+  wrote.
+- **Selective rebuild is cheap.** Because provenance is per field, a new Jeff question or an
+  upgraded model re-runs only that stage over only the affected rows.
+- **An unsure classifier writes nothing.** Jeff's confidence is chance-corrected; near zero
+  means "no opinion". The catalog stores *absent*, not a guess — consistent with the doctrine
+  that every field is observation ([`../CLAUDE.md`](../CLAUDE.md)). Every Jeff question is
+  tuned against a small hand-labelled fixture and its pass rate recorded before the tag is
+  trusted; wording and option-menu shape move results a lot (poker-ai's finding), so tuning is
+  by measurement, never by ear.
 
-Because the queue is just rows in `jobs.sqlite`, an offline MacBook simply means
-`pending` jobs accumulate. The catalog lags; nothing breaks. Curators keep working
-from whatever the catalog already contains; new captures are catalogued once the
-Mac wakes and drains the backlog.
+If the machine is busy for a week, `pending` simply accumulates: the catalog lags, curators
+keep working from what it already holds, and the backlog drains on the next free window.
 
-### Coordinator HTTP API (tailnet-only)
+## Claude spend
 
-| Method + path                        | Purpose                                        |
-| ------------------------------------ | ---------------------------------------------- |
-| `GET  /catalog/jobs/next`            | claim the next `pending` job (returns job + lease) |
-| `POST /catalog/jobs/{id}/heartbeat`  | renew the lease on a long job                  |
-| `GET  /catalog/captures/{id}/media`  | download the clip to process                   |
-| `POST /catalog/jobs/{id}/result`     | submit the derived record; coordinator writes it |
-| `POST /catalog/jobs/{id}/fail`       | report an error; requeue or mark `failed`      |
+Claude is the one metered resource. Controls, cheapest first:
 
-The coordinator is the **only** writer of `catalog.sqlite` and `jobs.sqlite`, even
-though the compute happens on another machine — the runner never touches `/data`,
-it goes through this API. That preserves the "one writer per store" invariant
-across the machine boundary.
+- **Spend scales with exhibitions, not captures.** Nothing per-capture ever goes to Claude.
+- **Production cadence is a budget knob, decoupled from rotation.** The gallery shows one
+  exhibition a day *from the collection*; the studio need not author one a day. Initial
+  assumption: **3 per week** (`curate` on Mon/Wed/Fri), tunable. The collection only grows, so
+  a thin collection means long repeats, which the vision accepts; it is a trade of freshness
+  for cost, to be settled with data (below).
+- **Runs are bounded.** `claude -p --max-turns N`; MCP tools return capped result sets
+  (rows ≤ a few dozen) with terse columns; an overview call returns the catalog's shape
+  (facets, counts) in one round trip so the agent doesn't spend turns discovering it. Each
+  extra turn re-reads the whole accumulated context, so turns — not output length — dominate
+  the bill.
+- **At most one retry, and only on a failed voice lint.** The spec is checked
+  deterministically (no second person, no banned framing — nostalgia, advice, interpretation)
+  before it is saved. A failure gets one retry; a second failure discards the run. An
+  exhibition that cannot justify its existence *should not exist* and should not be retried
+  until it does.
+- **Every run records its usage** (turns, tokens, cost, taken from the CLI's JSON result) in
+  the exhibition's `meta.json`, so cadence and model choice are decided from measurements.
+- **A hard ceiling.** `curate` refuses to start once a configured weekly/monthly cap is
+  reached.
+- **The token may be a subscription token.** `CLAUDE_CODE_OAUTH_TOKEN` draws on the same usage
+  allowance as interactive Claude Code, so a scheduled job can use up the headroom the
+  operator wanted for themselves. Treat the cap as protecting that allowance, not just a
+  bill.
 
 ## Scheduling
 
-**Server** (`cron` + the always-on coordinator):
+Everything is the user's `crontab` on odin, following the existing house style (`MAILTO`,
+`$LOG`, stdout and stderr to separate logs). `deno` is not on `PATH` here — it lives at
+`~/.deno/bin/deno` — and cron's `PATH` is minimal, so jobs call it by full path.
 
 ```cron
-# Coordinator: enqueue jobs for newly-arrived, uncatalogued captures
-*/5  * * * *  deno task -C /srv/mol/catalog/coordinator enqueue   >> /var/log/mol/enqueue.log 2>&1
+# Cataloguer: nightly window. Pre-flight exits quietly if the machine is busy.
+0 1 * * *    ~/.deno/bin/deno task -C ~/life-museum/catalog run --deadline 04:30 >> $LOG/life-museum-catalog.log 2>> $LOG/error.log
 
-# Author one exhibition per day (needs the Anthropic token)
-0 4  * * *    CLAUDE_CODE_OAUTH_TOKEN=$(cat /etc/mol/oauth) \
-              deno task -C /srv/mol/studio/curate curate          >> /var/log/mol/curate.log 2>&1
+# Curate: three exhibitions a week, after the catalog window (needs the Anthropic token)
+45 4 * * 1,3,5   CLAUDE_CODE_OAUTH_TOKEN=$(cat ~/.config/life-museum/oauth) \
+                 ~/.deno/bin/deno task -C ~/life-museum/studio/curate curate >> $LOG/life-museum-curate.log 2>> $LOG/error.log
 
-# Render any specs lacking HTML (idempotent; also catches theme changes)
-5 4  * * *    deno task -C /srv/mol/studio/render render          >> /var/log/mol/render.log 2>&1
+# Render any spec lacking HTML (deterministic, idempotent; also picks up theme changes)
+55 4 * * *   ~/.deno/bin/deno task -C ~/life-museum/studio/render render >> $LOG/life-museum-render.log 2>> $LOG/error.log
 ```
 
-(The coordinator's job-serving API is a small always-on Deno service under
-`systemd`, alongside `capture` and `exhibition`. Enqueue can also be an internal
-interval inside that service instead of cron — either works.)
-
-**MacBook** — the runner is a long-lived loop, started at login and kept alive by
-`launchd` (`KeepAlive`), polling the coordinator with backoff:
-
-```
-loop:
-  job = GET /catalog/jobs/next
-  if no job: sleep(30s); continue
-  clip = GET /catalog/captures/{job.id}/media
-  record = run_local_models(clip)          # ffmpeg, whisper.cpp, vision, embeddings
-  POST /catalog/jobs/{job.id}/result record
-```
-
-It needs no inbound ports and no public exposure — it only makes outbound calls to
-the coordinator over the tailnet.
+`capture` and `exhibition` are small always-on Deno services started like the machine's other
+services. The OAuth token lives in a `0600` file in the user's home, never in the repo.
 
 ## Ingress & TLS
 
-Camera capture needs a secure context (`getUserMedia` requires HTTPS). Use
-**Tailscale Serve** to terminate HTTPS with tailnet certificates and proxy to the
-local Deno processes — no extra proxy, nothing on the public internet:
+Camera capture needs a secure context (`getUserMedia` requires HTTPS). This machine
+already gives **every app its own Tailscale Service** (own hostname, HTTPS on 443, proxying
+a local port — `immich`, `paperless`, `mattermost`, `kotoba`, `poker`, …), so the museum
+follows the same convention; each new service needs one-time admin approval:
 
 ```
-tailscale serve --bg --https 443  http://localhost:8002   # exhibition (visitor)
-tailscale serve --bg --https 8443 http://localhost:8001   # capture   (subject)
+tailscale serve --service=svc:museum  --bg 8002    # exhibition (visitor)
+tailscale serve --service=svc:capture --bg 8001    # capture   (subject)
 ```
 
-The coordinator's job API is machine-to-machine on the tailnet; it does not need
-Tailscale Serve — bind it to the tailnet interface and authenticate runners with a
-shared bearer token (from a root-only env file) and/or Tailscale identity headers.
-If path/host routing or custom headers are needed later, **Caddy** can sit in front
-(as in `tvh-react-vibe`); the machine still stays tailnet-only.
+(8001 and 8002 were free on 2026-10-01; re-check with `ss -ltn` when scaffolding.) Everything
+stays tailnet-only. There is no machine-to-machine API any more, so no bearer token is needed.
 
 ## Privacy & network posture
 
-- **Raw media never leaves the tailnet.** Clips move only server → MacBook over
-  Tailscale for local cataloguing. No frames, audio, or video are ever sent to any
-  cloud service.
-- **Exactly one cloud egress:** the curator (`studio/curate`) → Anthropic API,
-  carrying catalog **text** only. This is a direct consequence of the firewall in
-  [`ARCHITECTURE.md`](ARCHITECTURE.md) / [`STACK.md`](STACK.md).
-- **One outbound credential:** `CLAUDE_CODE_OAUTH_TOKEN`, read from a root-only
-  file on the server, never committed, never present on the MacBook.
-- **Tailnet-only ingress:** the subject's phone and the visitor's browser reach
-  the app only over Tailscale.
+- **Raw media never leaves this machine** — not even across the tailnet now. No frames, audio
+  or video go to any cloud service.
+- **Exactly one cloud egress:** `studio/curate` → Anthropic API, carrying catalog **text**.
+  That text can include transcripts of speech, OCR'd text and exact coordinates; this is
+  accepted as-is, with no redaction.
+- **One outbound credential:** `CLAUDE_CODE_OAUTH_TOKEN`, in a `0600` file, never committed.
+- **Tailnet-only ingress** for the phone and the visitor's browser.
 
 ## Storage & backups
 
-- All durable state is `/data` on the **server**; the MacBook keeps only temp
-  files while a job runs.
-- Back up `/data` with `restic`/`rsync`. The **archive**, **collection**, and
-  **feedback** are the precious stores (append-only). The **catalog** and **jobs**
-  are derived and can be rebuilt from the archive, so they are optional to back up.
+- All durable state lives under **one data root** outside the repo. `/data` (assumed in earlier
+  drafts) **does not exist on this machine**; pick the path when scaffolding (`/home` has
+  95 GiB free).
+- **The archive, collection and feedback are the irreplaceable stores** (append-only); the
+  catalog is derived and can be rebuilt from the archive, so it is optional to back up.
+- This machine already has backup jobs (`~/borg/`, an `rclone` sync to Backblaze). **Add the
+  data root to them before the first real capture or import** — otherwise the archive is one
+  disk with no copy, which is exactly how Kotoba ended up unprotected.
 
 ## Failure modes
 
-| Situation                     | Effect                                                            |
-| ----------------------------- | ---------------------------------------------------------------- |
-| MacBook off for a while       | `pending` jobs pile up; catalog lags; everything else runs; drains on wake |
-| Runner dies mid-job           | lease expires → job returns to `pending` → retried later          |
-| Bad media / model crash       | job `fail`s; after N retries marked `failed` and surfaced          |
-| Server down                   | no captures/exhibitions/curation; the runner idles (nothing to pull) |
-| Anthropic unreachable         | `curate` fails cleanly and retries next schedule; catalog/gallery unaffected |
-| Catalog corrupted/lost        | rebuild from the archive by re-enqueuing all captures              |
+| Situation | Effect |
+| --------- | ------ |
+| Machine busy / poker-ai running / low memory | pre-flight skips the window; catalog lags; everything else runs |
+| Window deadline reached mid-backlog | current item finishes, batch exits; resumes next night |
+| Process killed or OOM mid-stage | no partial write (one transaction per item); item redone next window |
+| Bad media / model crash | stage `fail`s; after N tries marked `failed` for that stage and surfaced |
+| A stage's model won't start | that stage is skipped, later stages that need its text skip those rows; nothing breaks |
+| Server down | no captures, exhibitions or curation |
+| Anthropic unreachable | `curate` fails cleanly and retries at its next slot; catalog and gallery unaffected |
+| Claude cap reached | `curate` declines to start until the cap resets |
+| Catalog corrupted/lost | rebuild from the archive (clear stage outputs; the batch redoes them) |
 
 ## Open questions
 
-- **Runner concurrency** — one job at a time is assumed (matches a single
-  MacBook). Revisit only if a second runner is ever added.
-- **Wake-on-demand** — leave the MacBook to catalogue only when the subject
-  happens to power it on, or trigger a wake (e.g. scheduled power-on / WoL) when
-  the backlog crosses a threshold.
-- **Coordinator enqueue trigger** — cron poll (above) vs. an internal interval vs.
-  capture notifying the coordinator on upload.
-- **Curate cadence & curator selection** — daily is assumed; confirm, and whether
-  selection is uniform-random or weighted (never letting preference override
-  integrity — see [`CURATORS.md`](CURATORS.md)).
-- **Rotation policy** — how the gallery floor picks the day's exhibition
-  (`ARCHITECTURE.md` leaves this open).
+- **Which small VLM?** The biggest unknown and the quality ceiling of the whole product.
+  Candidates in the SmolVLM / Moondream / Florence-2 class (no benchmark on this machine yet).
+  Benchmark on realistic keyframes for seconds/frame and resident memory, and judge captions
+  for *observational* wording. If none is good enough, the levers that keep the firewall are a
+  bigger local model run less often, or fewer frames per clip; sending frames to Claude would
+  break it and is not assumed.
+- **Weather source.** The catalog lists weather, but nothing here is a local source for it.
+  Historical weather by coordinates + time needs an external lookup, which would be a second
+  cloud egress. Options: coarsen coordinates before the lookup, or omit weather in v1.
+- **Reverse geocoding source** (`place_name`): an offline gazetteer (coarse, fully local) vs
+  anything that sends coordinates out.
+- **Curate cadence and model.** 3/week and a mid-tier default model are assumptions. Decide from
+  the first weeks of recorded usage; also whether the model is pinned per `curator@version`.
+- **Whisper / embeddings footprint and thread counts** — not measured here yet.
+- **Rotation policy** — how the gallery floor picks the day's exhibition (`ARCHITECTURE.md`
+  leaves this open); matters more now that production is slower than rotation.
 
 ## Related
 
@@ -228,4 +293,5 @@ If path/host routing or custom headers are needed later, **Caddy** can sit in fr
 - [`STACK.md`](STACK.md) — runtimes, code layout, and the catalog's contents.
 - [`CURATORS.md`](CURATORS.md) — what the curator (the one cloud consumer) is.
 - [`../CLAUDE.md`](../CLAUDE.md) — the doctrine all generated text obeys.
-</content>
+- `~/poker-ai/CLAUDE.md` and `~/poker-ai/reports/` — measured behaviour of Jeff and small
+  models on this machine, which the numbers above come from.

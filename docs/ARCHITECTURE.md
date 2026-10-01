@@ -50,8 +50,10 @@ derives) is in [`CAPTURE.md`](CAPTURE.md).
 
 ### 2. `catalog/` — the cataloguer
 
-The objective layer. Runs **on a schedule** as cron-invoked batch jobs (no
-server). Reads the raw archive and builds a queryable **catalog** over it —
+The objective layer. Runs **on a schedule** as a cron-invoked, time-boxed nightly
+batch (no server), on the same shared machine as everything else — so it is built to
+be cheap and to yield: cheapest method first (plain code, then small models), and it
+skips a night rather than starve other services. Reads the raw archive and builds a queryable **catalog** over it —
 metadata, locations, weather, motion, dominant colors, audio events, embeddings,
 OCR, transcripts, scene descriptions. This work is deterministic and factual, not
 creative: the cataloguer records what is *observably there*, never what it means.
@@ -161,7 +163,7 @@ from the archive (read-only) to the visitor's browser. That is byte-serving to a
 **human**, never model input — so it does not breach the curator's firewall from
 the archive. The distinction that matters is not *who reads the archive* but
 *what reads it*: **no LLM ever sees raw captures.** Only the cataloguer does, and
-it runs local models (see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)).
+it runs local code and models (see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)).
 
 ## Bootstrapping the archive
 
@@ -174,8 +176,8 @@ one rather than after a year of discipline.
 
 - [`VISION.md`](VISION.md) — why the system is shaped this way.
 - [`STACK.md`](STACK.md) — the concrete stack, storage, and data formats.
-- [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part is deployed and how
-  cataloguing jobs are dispatched.
+- [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) — where each part is deployed, the
+  resource budget, the nightly cataloguing batch and Claude cost controls.
 - [`CAPTURE.md`](CAPTURE.md) — the capture client design.
 - [`CURATORS.md`](CURATORS.md) — the curator layer in detail.
 - [`EXHIBITION-SPEC.md`](EXHIBITION-SPEC.md) — the spec format.

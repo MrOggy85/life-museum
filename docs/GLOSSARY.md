@@ -17,20 +17,23 @@ these terms consistently.
   point where pixels and sound become words and numbers. Curators query the
   catalog, not the raw archive. See [`STACK.md`](STACK.md#what-the-catalog-contains).
 - **Cataloguer** — the part that builds and maintains the catalog. Objective, not
-  creative: it records what is observably present, using **local models**
-  (transcription, vision, embeddings) so raw media never leaves the tailnet. It may
-  use a model only to observe and transcribe, never to interpret or arrange.
-  Deployed in two halves — a **coordinator** on the server and a **cataloguer
-  runner** on an intermittently-on machine. See [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
-- **Coordinator** — the deterministic, server-side half of the cataloguer. Detects
-  uncatalogued captures, publishes catalog jobs, ingests runner results, and is
-  the sole writer of the catalog. Runs no models.
-- **Cataloguer runner** — the compute half of the cataloguer, on a powerful but
-  intermittently-on machine (a MacBook). Pulls catalog jobs, runs local models, and
-  posts results back. Stateless, like a CI runner.
-- **Catalog job** — one unit of cataloguing work (a single uncatalogued capture)
-  published by the coordinator and claimed by a runner. Lifecycle:
-  `pending → claimed (leased) → done | failed`.
+  creative: it records what is observably present, using plain code and **local
+  models** so raw media never leaves the machine. It may use a model only to observe,
+  transcribe and label, never to interpret or arrange. Runs as one **nightly batch**
+  on the single shared server and is the sole writer of the catalog. See
+  [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md).
+- **Tier** — the cost class of a piece of work, always chosen cheapest-first:
+  0 plain code, 1 small perception models (speech, vision, embeddings), 2 **Jeff**,
+  3 Claude (curation only).
+- **Jeff** — a small local zero-shot *text* classifier. Answers closed-vocabulary
+  questions (choice, yes/no, score) over text the perception tier already produced;
+  never sees media. Runs in its own container, only inside the batch window.
+- **Stage** — one step of the batch (e.g. whisper, VLM, embeddings, Jeff). Pending work
+  is "the captures lacking that stage's output"; each stage records model + version
+  per field, so it can be re-run selectively.
+- **Batch window** — the time-boxed overnight slot when models may run. Starts only if
+  pre-flight finds enough free memory and no competing workload; a skipped night just
+  means the catalog lags.
 - **Curator** — a first-class, editable, versioned authored perspective (e.g.
   `architect@v1`) that queries the catalog and produces exhibitions. Defined by
   methodology, not personality. See [`CURATORS.md`](CURATORS.md).

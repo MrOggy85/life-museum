@@ -66,8 +66,9 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
 - `capture/` — thin capture client (own deployment): a viewfinder + shutter PWA
   (see `docs/CAPTURE.md`). Not yet scaffolded.
 - `catalog/` — the cataloguer: objective indexing of the archive into a queryable
-  catalog, using local models. A server-side coordinator plus a pull-based runner
-  on the MacBook (see `docs/INFRASTRUCTURE.md`). Not yet scaffolded.
+  catalog, using local code and small local models. A nightly, resource-budgeted
+  batch on the one shared home server (see `docs/INFRASTRUCTURE.md`). Not yet
+  scaffolded.
 - `studio/` — curators and designer; scheduled, independent of visits.
 - `exhibition/` — the viewer webapp. Not yet scaffolded.
 - `docs/` — the backbone. Start with `VISION.md`; the stack and data formats are
