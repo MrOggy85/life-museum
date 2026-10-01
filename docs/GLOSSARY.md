@@ -27,7 +27,7 @@ these terms consistently.
   3 Claude (curation only).
 - **Jeff** — a small local zero-shot *text* classifier. Answers closed-vocabulary
   questions (choice, yes/no, score) over text the perception tier already produced;
-  never sees media. Shared with poker-ai (the `poker-jeff` container); started on demand inside the batch window and stopped afterwards.
+  never sees media. A shared, lease-managed service (`~/jeff`, port 8781; poker-ai is another client): started on demand inside the batch window, one request at a time, and stopped by the service itself when no client holds a lease.
 - **Stage** — one step of the batch (e.g. whisper, VLM, embeddings, Jeff). Pending work
   is "the captures lacking that stage's output"; each stage records model + version
   per field, so it can be re-run selectively.

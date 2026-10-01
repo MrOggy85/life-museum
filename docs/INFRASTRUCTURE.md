@@ -89,7 +89,7 @@ relied on.
 | whisper.cpp | one stage of the window | tiny/base model files are 75 / 142 MiB; runtime *TBD* | no |
 | small VLM | one stage of the window | *TBD* | no |
 | embeddings | one stage of the window | *TBD* | no |
-| Jeff (shared `poker-jeff` container, started/stopped on demand) | one stage of the window | 2.4 GB steady, 4.25 GB peak | no |
+| Jeff (shared `~/jeff` service, lease-managed) | one stage of the window | 2.4 GB steady, 4.25 GB peak | no |
 | catalog MCP | per curate run | small | no |
 | `studio` curate | a few times a week | one `claude` CLI process, *TBD* | **yes** |
 | `studio` render | daily, seconds | small | no |
@@ -105,37 +105,42 @@ The rules that keep this from disturbing the other services:
    *largest* model, not their sum, and model load time is paid once per night, not once per
    clip.
 3. **Pre-flight before every window; skip rather than squeeze.** The batch does nothing if
-   - poker-ai has a viewer connected (a watched tournament holds ~2 of the 4 cores and uses
-     Jeff itself), or the data root's disk is not mounted, or
+   - the data root's disk is not mounted, or
    - `MemAvailable` is below `peak(next model) + 2 GiB` (the margin is a starting value), or
    - another instance holds the lock.
 
-   A skipped night costs nothing: the catalog just lags (see below).
+   And the **Jeff stage alone** is skipped while another client holds a fresh Jeff lease
+   (poker-ai, when someone is watching, holds ~2 of the 4 cores *and* Jeff's single request
+   slot).
+
+   A skipped night (or stage) costs nothing: the catalog just lags (see below).
 4. **Three threads, low priority.** Measured for Jeff: 2 threads = 8.3 s, **3 threads = 3.7 s**,
    4 threads = 3.1 s. In core-seconds that is 16.6 vs **11.1** vs 12.4 — so 3 threads is both
    faster *and* cheaper than 2; "use fewer cores to be polite" is a false economy past that
    cliff. Run model containers with `--cpus=3`, `OMP_NUM_THREADS=3` (torch ignores the cgroup
    quota), and a low `--cpu-shares` so Immich, Paperless and Mattermost win any contention.
    Whisper and the VLM need their own thread sweep.
-5. **Jeff is shared with poker-ai, and can disappear at any time.** The `poker-jeff` container
-   is a generic Jeff (confirmed with poker-ai) and this project uses it rather than a second
-   copy. It is single-request (a second concurrent request gets `529`, `Retry-After: 1`), and
-   poker-ai's `deploy/models-ondemand.sh` (user cron, every minute) **stops it after 10 minutes
-   with no poker viewer** and restarts it when one connects. So the cataloguer must:
-   - **start it on demand** (`docker -c default start poker-jeff`, then poll `/health`; a cold
-     start takes about a minute), and **stop it when done** — but only if *it* started it and
-     poker-ai has no viewer; otherwise leave it to poker-ai's idle timer;
-   - **tolerate it vanishing mid-stage:** on a connection error or failed health check, re-run
-     the start-and-wait step and retry the item, bounded (e.g. 3 restarts per night), then
-     skip the stage rather than loop; on `529`, back off and retry (another caller is using
-     it);
-   - never run Jeff stages while poker-ai has a viewer (pre-flight, rule 3).
+5. **Jeff is a shared service (`~/jeff`), and may be stopped at any time.** It is a standalone
+   container (`jeff`, image `jeff:latest`, host port `127.0.0.1:8781`; poker-ai is just one
+   client). It serves **one request at a time** (a second caller gets `529` +
+   `Retry-After: 1`), is stopped when idle, and its lifecycle is **lease-based**
+   (`~/jeff/CLAUDE.md`, driver `~/jeff/jeff.sh`). The cataloguer must:
+   - **start it on demand:** `~/jeff/jeff.sh up`, then poll `/health` (cold start ~20 s, longer
+     if the weights are out of page cache);
+   - **hold a lease while using it:** `jeff.sh lease life-museum` every minute or so during
+     the stage. Cron's `jeff.sh reap` stops Jeff once *every* client's lease is older than
+     10 minutes, so there is no explicit release: after the last stage the container just
+     lingers up to ~10 minutes (2.2 GB) and goes. Never `docker stop jeff` by hand;
+   - **tolerate it vanishing anyway** (reap races, OOM, a manual stop): on a connection error
+     or failed health check, run `up` again and retry the item, bounded (e.g. 3 restarts per
+     night), then skip the stage rather than loop. On `529`, back off and retry;
+   - **yield to other clients:** if another client's lease is fresh (e.g. `leases/poker`
+     touched in the last few minutes) it is in use and each of our requests would cost its
+     decisions a `529`; skip the Jeff stage that night (rule 3). Other clients are expected to
+     retry on `529`, but a batch that holds Jeff's single slot for hours is not polite.
 
-   Open point for poker-ai's side: its idle timer can stop Jeff mid-batch. A lease file that
-   `models-ondemand.sh` honours (skip the stop while it exists) would remove the flapping;
-   until then the restart path above is the safety net. The image carries poker-ai's CPU-inference
-   fixes (CPU torch, `fla` removed, no `uv run`); if poker-ai is retired, keep the image or
-   rebuild it from `~/poker-ai/models/jeff/`.
+   Jeff's behaviour, measured CPU settings (3 threads, `OMP_NUM_THREADS` = `--cpus`) and API
+   quirks are in `~/jeff/CLAUDE.md` and `~/poker-ai/CLAUDE.md`.
 6. **Time-boxed window.** The batch takes a `--deadline`; at the deadline it finishes the
    current item and exits. Initial window **01:00–04:30 JST**, chosen to end before the
    existing 05:00 (Sunday) / 06:00 / 07:30 cron jobs.
@@ -158,7 +163,7 @@ cron, 01:00 ─▶ pre-flight (rule 3) ─▶ take lock
   stage 1a  whisper     only captures where speech was detected            ─ stop container
   stage 1b  VLM         keyframe → scene_description (+ OCR if text seen)  ─ stop container
   stage 1c  embeddings  over the derived text                              ─ stop container
-  stage 2   Jeff        closed-vocabulary tags over the derived text       ─ stop container
+  stage 2   Jeff        closed-vocabulary tags over the derived text       ─ lease held; Jeff stops itself when idle
   deadline or backlog empty ─▶ release lock
 ```
 
@@ -279,7 +284,7 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
 
 | Situation | Effect |
 | --------- | ------ |
-| Machine busy / poker-ai watched / low memory / data disk not mounted | pre-flight skips the window; catalog lags; everything else runs |
+| Machine busy / Jeff leased by another client / low memory / data disk not mounted | pre-flight skips the window; catalog lags; everything else runs |
 | Window deadline reached mid-backlog | current item finishes, batch exits; resumes next night |
 | Process killed or OOM mid-stage | no partial write (one transaction per item); item redone next window |
 | Bad media / model crash | stage `fail`s; after N tries marked `failed` for that stage and surfaced |
@@ -311,5 +316,5 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
 - [`STACK.md`](STACK.md) — runtimes, code layout, and the catalog's contents.
 - [`CURATORS.md`](CURATORS.md) — what the curator (the one cloud consumer) is.
 - [`../CLAUDE.md`](../CLAUDE.md) — the doctrine all generated text obeys.
-- `~/poker-ai/CLAUDE.md` and `~/poker-ai/reports/` — measured behaviour of Jeff and small
+- `~/jeff/CLAUDE.md`, `~/poker-ai/CLAUDE.md` and `~/poker-ai/reports/` — measured behaviour of Jeff and small
   models on this machine, which the numbers above come from.
