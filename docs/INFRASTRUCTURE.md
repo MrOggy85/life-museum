@@ -236,19 +236,14 @@ Everything is the user's `crontab` on odin, following the existing house style (
 `~/.deno/bin/deno` — and cron's `PATH` is minimal, so jobs call it by full path.
 
 ```cron
-# Cataloguer: nightly window. Pre-flight exits quietly if the machine is busy.
-0 1 * * *    ~/.deno/bin/deno task -C ~/life-museum/catalog run --deadline 04:30 >> $LOG/life-museum-catalog.log 2>> $LOG/error.log
-
-# Curate: three exhibitions a week, after the catalog window (needs the Anthropic token)
-45 4 * * 1,3,5   CLAUDE_CODE_OAUTH_TOKEN=$(cat ~/.config/life-museum/oauth) \
-                 ~/.deno/bin/deno task -C ~/life-museum/studio curate >> $LOG/life-museum-curate.log 2>> $LOG/error.log
-
-# Render any spec lacking HTML (deterministic, idempotent; also picks up theme changes)
-55 4 * * *   ~/.deno/bin/deno task -C ~/life-museum/studio render >> $LOG/life-museum-render.log 2>> $LOG/error.log
+# life-museum (installed 2026-10-02). Thin wrappers set PATH/DATA_ROOT; curate reads the OAuth token file if present.
+15 1 * * *   /home/oskar/life-museum/catalog/scripts/nightly.sh >> $LOG/life-museum-catalog.log 2>> $LOG/error.log
+45 4 * * 1,3,5 /home/oskar/life-museum/studio/scripts/curate.sh >> $LOG/life-museum-curate.log 2>> $LOG/error.log
+55 4 * * *   /home/oskar/life-museum/studio/scripts/render.sh >> $LOG/life-museum-render.log 2>> $LOG/error.log
 ```
 
 `capture` and `exhibition` are small always-on Deno services started like the machine's other
-services. The OAuth token lives in a `0600` file in the user's home, never in the repo.
+services. The OAuth token, if used, lives in a `0600` file at `~/.config/life-museum/oauth`, never in the repo; without it `claude` falls back to the interactive login in `~/.claude`.
 
 ## Ingress & TLS
 
