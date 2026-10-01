@@ -113,7 +113,11 @@ export function createHandler(opts: HandlerOptions): (req: Request) => Promise<R
 
 export async function init(host: string, port: number): Promise<Deno.HttpServer> {
   const { DATA_ROOT, CLIENT_DIR, MAX_UPLOAD_BYTES } = await import('./config.ts');
-  await assertDataRootReady(DATA_ROOT, Deno.env.get('ALLOW_UNMOUNTED_DATA_ROOT') === '1');
+  await assertDataRootReady(
+    DATA_ROOT,
+    Deno.env.get('ALLOW_UNMOUNTED_DATA_ROOT') === '1',
+    Deno.env.get('MOUNT_POINT') ?? DATA_ROOT,
+  );
   const archive = new Archive(DATA_ROOT);
   const handler = createHandler({ archive, clientDir: CLIENT_DIR, maxUploadBytes: MAX_UPLOAD_BYTES });
   const server = Deno.serve({ hostname: host, port }, handler);

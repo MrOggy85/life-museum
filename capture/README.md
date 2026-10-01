@@ -7,7 +7,7 @@ cd capture/client && deno task build          # esbuild bundle -> dist/ (also wr
 cd capture/api && DATA_ROOT=/mnt/usbssd/museum-data deno task start
 ```
 
-Env: `DATA_ROOT` (required), `HOST` (default `127.0.0.1`), `PORT` (default `8001`), `CLIENT_DIR` (default `../client/dist`).
+Env: `DATA_ROOT` (required), `MOUNT_POINT` (default: `DATA_ROOT`; the mount the guard checks, e.g. `/mnt/usbssd`), `HOST` (default `127.0.0.1`), `PORT` (default `8001`), `CLIENT_DIR` (default `../client/dist`).
 
 - **Mount guard.** Startup fails unless `DATA_ROOT` exists and is on a different filesystem device than its parent,
   because a missing `nofail` USB disk would otherwise leave captures landing on the root filesystem. For temp/test runs

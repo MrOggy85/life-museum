@@ -25,3 +25,17 @@ Deno.test({
     await assertDataRootReady('/mnt/usbssd');
   },
 });
+
+Deno.test('refuses a data root that is not on the declared mount', async () => {
+  const dir = await Deno.makeTempDir();
+  await assertRejects(() => assertDataRootReady(dir, false, '/mnt/usbssd'), Error, 'does not look mounted');
+  await Deno.remove(dir);
+});
+
+Deno.test({
+  name: 'accepts a subdirectory of the declared mount point',
+  ignore: !(await Deno.stat('/mnt/usbssd/museum-data').then(() => true, () => false)),
+  fn: async () => {
+    await assertDataRootReady('/mnt/usbssd/museum-data', false, '/mnt/usbssd');
+  },
+});
