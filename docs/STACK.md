@@ -147,8 +147,10 @@ specimen
   lat, lon              # coordinates                                (from the client)
   place_name            # offline gazetteer, coarse, fully local (tier 0)
   duration_seconds      # ffprobe                                    (tier 0)
-  motion_state          # still | walking | vehicle … GPS speed / frame difference (tier 0)
-  time_of_day           # dawn | morning | midday | evening | night — solar position (tier 0)
+  motion_score, motion_state  # mean frame difference 0..1; still | slight | high. Includes camera shake;
+                        #   a single GPS point has no speed, so no walking/vehicle (tier 0, thresholds provisional)
+  time_of_day           # dawn | morning | midday | afternoon | evening | night — solar position;
+                        #   NULL without GPS (tier 0)
   weather_temp_c        # NOT in v1 (no local source; would need cloud egress)
   weather_conditions    # NOT in v1 — same
   dominant_colors       # [{hex, weight}, …]                         (tier 0)
