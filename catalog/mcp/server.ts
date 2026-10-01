@@ -21,7 +21,7 @@ export const TOOLS: Tool[] = [
     name: 'query_catalog',
     description:
       'List specimens matching filters, capped at 40 rows. Returns id, local time, place, time of day, motion, audio, ' +
-      'seconds, top colors. All filters optional and combined with AND.',
+      'seconds, top colors. Use get_specimen to read the scene description and OCR text of one specimen. All filters optional and combined with AND.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -29,6 +29,7 @@ export const TOOLS: Tool[] = [
         date_to: str('YYYY-MM-DD, inclusive'),
         time_of_day: { type: 'string', enum: ['dawn', 'morning', 'midday', 'afternoon', 'evening', 'night'] },
         place: str('substring of the place name, e.g. "Kanagawa"'),
+        text: str('substring of the scene description or of text read from the image (OCR), case-insensitive'),
         motion_state: { type: 'string', enum: ['still', 'slight', 'high'] },
         audio_state: { type: 'string', enum: ['silent', 'quiet', 'moderate', 'loud', 'none'] },
         has_location: { type: 'boolean' },

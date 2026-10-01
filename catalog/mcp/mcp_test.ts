@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertStringIncludes, assertThrows } from '@std/assert';
 import { openCatalog } from '../db.ts';
 import { handle } from './server.ts';
-import { MAX_ROWS, queryCatalog } from './tools.ts';
+import { MAX_ROWS, overview, queryCatalog } from './tools.ts';
 
 function seeded() {
   const db = openCatalog(':memory:');
@@ -85,5 +85,17 @@ Deno.test('no tool exposes media or writes', () => {
   const db = seeded();
   const tools = (handle(db, { jsonrpc: '2.0', id: 1, method: 'tools/list' }) as any).result.tools;
   for (const t of tools) assert(!/clip|frame|video|file|write|delete/i.test(t.name), t.name);
+  db.close();
+});
+
+Deno.test('text filter searches scene description and OCR, escapes wildcards; overview reports coverage', () => {
+  const db = seeded();
+  db.exec(`UPDATE specimen SET scene_description = 'A red bicycle against a wall.' WHERE capture_id = 'a'`);
+  db.exec(`UPDATE specimen SET ocr_text = '100% OPEN' WHERE capture_id = 'b'`);
+  assertStringIncludes(queryCatalog(db, { text: 'BICYCLE' }), '1 of 1 matching');
+  assertStringIncludes(queryCatalog(db, { text: 'open' }), '1 of 1 matching');
+  assertStringIncludes(queryCatalog(db, { text: '100%' }), '1 of 1 matching');
+  assertStringIncludes(queryCatalog(db, { text: '%' }), '1 of 1 matching');
+  assertStringIncludes(overview(db), 'scene descriptions: 1 of 62; with legible text (OCR): 1');
   db.close();
 });

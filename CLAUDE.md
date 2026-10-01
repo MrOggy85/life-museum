@@ -68,7 +68,8 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
 - `catalog/` — the cataloguer: objective indexing of the archive into a queryable
   catalog, using local code and small local models. A nightly, resource-budgeted
   batch on the one shared home server (see `docs/INFRASTRUCTURE.md`). Tier-0 stages
-  built (`deno task test`, `catalog/scripts/nightly.sh`); model stages not yet. `catalog/mcp/` is the
+  and the VLM stage (scene description + OCR) built (`deno task test`, `catalog/scripts/nightly.sh`); whisper,
+  embeddings and Jeff not yet. `catalog/mcp/` is the
   read-only stdio MCP for curators (`query_catalog`, `overview`, `list_locations`, `get_specimen`).
 - `studio/` — curators and designer; scheduled, independent of visits. `studio/curate` is built
   (`deno task curate`, `deno task test`): headless `claude -p` over the catalog MCP, voice lint,

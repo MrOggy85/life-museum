@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "batch": "deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,nice,docker --allow-net=127.0.0.1 --allow-ffi --allow-env --allow-sys=systemMemoryInfo batch/main.ts",
-    "test": "deno test --allow-read --allow-write --allow-run=ffmpeg,ffprobe --allow-net=127.0.0.1 --allow-ffi --allow-env --allow-sys=systemMemoryInfo",
+    "batch": "deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,nice,docker --allow-net=127.0.0.1 --allow-ffi --allow-env --allow-sys=systemMemoryInfo,loadavg batch/main.ts",
+    "test": "deno test --allow-read --allow-write --allow-run=ffmpeg,ffprobe --allow-net=127.0.0.1 --allow-ffi --allow-env --allow-sys=systemMemoryInfo,loadavg",
     "check": "deno check batch/main.ts"
   },
   "imports": {

@@ -158,7 +158,9 @@ specimen
                         #   by code (tier 0); labelled events need a model (open)
   transcript            # whisper.cpp, only if speech was detected   (tier 1)
   scene_description     # one factual sentence from the small VLM    (tier 1)
-  ocr_text              # any legible text in frame                  (tier 1)
+                        #   NULL if withheld by the interpretive-word filter (see vlm_note)
+  ocr_text              # any legible text in frame; NULL = none    (tier 1)
+  vlm_note              # why scene_description was withheld, else NULL
   tags                  # closed-vocabulary labels over the derived text,
                         #   e.g. [doorway, threshold, hands]; NULL when unsure (tier 2, Jeff)
   objects               # [mug, bicycle, door, keyboard, …] — optional; via tags or the VLM

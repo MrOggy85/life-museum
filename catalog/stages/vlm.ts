@@ -123,7 +123,7 @@ export async function keyframeJpeg(file: string): Promise<Uint8Array> {
 async function waitForLoad(maxLoad: number, waitMs: number): Promise<void> {
   const deadline = Date.now() + waitMs;
   while (true) {
-    const load1 = Number((await Deno.readTextFile('/proc/loadavg')).split(' ')[0]);
+    const load1 = Deno.loadavg()[0];
     if (load1 <= maxLoad) return;
     if (Date.now() >= deadline) throw new Error(`load ${load1} stayed above ${maxLoad}`);
     await new Promise((r) => setTimeout(r, 30_000));

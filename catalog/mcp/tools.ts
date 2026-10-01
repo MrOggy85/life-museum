@@ -19,6 +19,7 @@ export interface Filters {
   date_to?: string;
   time_of_day?: string;
   place?: string;
+  text?: string;
   motion_state?: string;
   audio_state?: string;
   has_location?: boolean;
@@ -74,6 +75,11 @@ export function queryCatalog(db: Database, f: Filters): string {
     where.push(`place_name LIKE ? ESCAPE '\\'`);
     args.push(`%${String(f.place).replace(/[\\%_]/g, '\\$&')}%`);
   }
+  if (f.text !== undefined) {
+    const like = `%${String(f.text).replace(/[\\%_]/g, '\\$&')}%`;
+    where.push(`(scene_description LIKE ? ESCAPE '\\' OR ocr_text LIKE ? ESCAPE '\\')`);
+    args.push(like, like);
+  }
   if (f.has_location !== undefined) where.push(f.has_location ? 'lat IS NOT NULL' : 'lat IS NULL');
   if (f.color_hex !== undefined && !HEX.test(f.color_hex)) throw new Error('color_hex must be #rrggbb');
 
@@ -126,6 +132,9 @@ export function overview(db: Database): string {
   const hours = db.prepare(
     `SELECT CAST(substr(captured_at,12,2) AS INTEGER) h, COUNT(*) n FROM specimen GROUP BY h ORDER BY h`,
   ).all<{ h: number; n: number }>();
+  const vlm = db.prepare(
+    'SELECT COUNT(scene_description) d, COUNT(ocr_text) o FROM specimen',
+  ).get<{ d: number; o: number }>()!;
   return [
     `specimens: ${total} (${located} with location), total duration ${dur.toFixed(0)} s`,
     `dates: ${span.a} to ${span.b} (device-local)`,
@@ -135,7 +144,8 @@ export function overview(db: Database): string {
     `motion_state: ${counts(db, 'motion_state')}`,
     `audio_state: ${counts(db, 'audio_state')}`,
     `places: ${counts(db, 'place_name')}`,
-    'not yet in the catalog: transcripts, scene descriptions, OCR, tags, embeddings',
+    `scene descriptions: ${vlm.d} of ${total}; with legible text (OCR): ${vlm.o}`,
+    'not yet in the catalog: transcripts, tags, embeddings',
   ].join('\n');
 }
 

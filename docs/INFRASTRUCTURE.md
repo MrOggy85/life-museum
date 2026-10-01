@@ -312,8 +312,16 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
   **LFM2-VL-450M Q8_0**: 4.1 s/frame, about 0.4 GiB, English-only OCR; use for bulk backfill or tight memory.
   Rejected: SmolVLM-256M/500M (poor), Florence-2 (2.3 GiB, hallucinated Japanese), LFM2-VL-1.6B (about 15 s, aborted).
   Qwen is the most interpretive, so a fixed prompt **and** a lexicon post-filter (flag or retry) are required in
-  the cataloguer. At about 10 clips/day this is minutes a night. Weights: `$DATA_ROOT/models/`. Still open: the
-  stage itself, and whether it emits an `objects` list.
+  the cataloguer. At about 10 clips/day this is minutes a night. Weights: `$DATA_ROOT/models/`.
+  **Built (stage `vlm`, version 1):** one stage, two calls per clip (describe, then OCR) on a 512 px keyframe taken
+  at 1 s. The batch starts the `museum-vlm` container from the pinned image digest in the stage's `setup` hook
+  (after waiting up to 10 min for 1-minute load <= 2.5, and the usual MemAvailable >= 4 GiB + 2 GiB check) and
+  removes it in `teardown`, also on failure or window close. A description with interpretive wording is retried once
+  with a stricter prompt; if it still trips the lexicon it is withheld (`scene_description` NULL, reason in
+  `vlm_note`) so curators never see it. OCR output that is `NONE`, empty or degenerate is stored as NULL. Overrides:
+  `VLM_PORT`, `VLM_MODEL_DIR`, `VLM_MODEL_FILE`, `VLM_MMPROJ_FILE` (the LFM2-VL fallback needs `--memory 2g` and no
+  `--image-max-tokens`, so it is not just an env switch yet). Measured on a synthetic clip: 14 s for both calls.
+  Still open: whether it emits an `objects` list, and the lexicon's false-positive rate on real clips.
 - **Decided: no weather in v1** (it would need a second cloud egress), and **`place_name`
   comes from an offline gazetteer** (coarse, fully local). Revisit weather later if wanted.
 - **Curate cadence and model.** 3/week and a mid-tier default model are assumptions. Decide from
