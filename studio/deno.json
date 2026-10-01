@@ -2,7 +2,8 @@
   "tasks": {
     "curate": "deno run --allow-read --allow-write --allow-run=claude --allow-ffi --allow-env curate/main.ts",
     "test": "deno test --allow-read --allow-write --allow-run --allow-ffi --allow-env",
-    "check": "deno check curate/main.ts"
+    "check": "deno check curate/main.ts render/main.ts",
+    "render": "deno run --allow-read --allow-write --allow-ffi --allow-env render/main.ts"
   },
   "imports": {
     "@db/sqlite": "jsr:@db/sqlite@^0.12.0",

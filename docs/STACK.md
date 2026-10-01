@@ -255,6 +255,14 @@ fixed CSS/layout template chosen per spec), and writes `index.html` +
 `meta.json`. No model runs here — this is what makes every spec re-renderable
 forever (the durability principle).
 
+Built: `deno task render` in `studio/` walks `collection/*/spec.md` (skipping `.rejected/`) and
+writes `index.html` atomically, merging `render: {version, theme, rendered_at}` into `meta.json`.
+It re-renders when `spec.md` is newer, `RENDERER_VERSION` changes or the theme changes; HTML
+contains no timestamps, so output is byte-identical for the same input. Theme is chosen by
+hashing the exhibition id (`gallery`, `nocturne`). Clips are referenced as `/media/<capture_id>.mp4`,
+which the exhibition server must serve from the archive. Dates come from the catalog only
+when `reveal_dates` is `after` (a `<details>` element, no script) or `always`; absent means `never`.
+
 ### Exhibition (`exhibition/api`)
 
 Each day it selects one already-rendered exhibition from `collection/` and serves

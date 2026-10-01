@@ -72,7 +72,8 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
   read-only stdio MCP for curators (`query_catalog`, `overview`, `list_locations`, `get_specimen`).
 - `studio/` — curators and designer; scheduled, independent of visits. `studio/curate` is built
   (`deno task curate`, `deno task test`): headless `claude -p` over the catalog MCP, voice lint,
-  spend cap. Curator definitions in `studio/curators/`. `studio/render` not yet.
+  spend cap. Curator definitions in `studio/curators/`. `studio/render` is built (`deno task render`):
+  deterministic spec -> `index.html`, idempotent, two themes picked by hashing the id.
 - `exhibition/` — the viewer webapp. Not yet scaffolded.
 - `docs/` — the backbone. Start with `VISION.md`; the stack and data formats are
   in `docs/STACK.md`; deployment topology in `docs/INFRASTRUCTURE.md`.
