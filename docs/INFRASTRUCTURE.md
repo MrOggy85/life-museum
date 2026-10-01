@@ -320,8 +320,9 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
 - **Curate cadence and model.** 3/week and a mid-tier default model are assumptions. Decide from
   the first weeks of recorded usage; also whether the model is pinned per `curator@version`.
 - **Whisper / embeddings footprint and thread counts** — not measured here yet.
-- **Rotation policy** — how the gallery floor picks the day's exhibition (`ARCHITECTURE.md`
-  leaves this open); matters more now that production is slower than rotation.
+- **Rotation policy** — v1 is a stateless daily pick with no consecutive repeats (see
+  `STACK.md`). With a thin collection it repeats often; revisit once production outpaces it
+  (e.g. weight toward exhibitions not shown recently, which needs a history store).
 
 ## Related
 

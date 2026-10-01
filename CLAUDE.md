@@ -74,7 +74,9 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
   (`deno task curate`, `deno task test`): headless `claude -p` over the catalog MCP, voice lint,
   spend cap. Curator definitions in `studio/curators/`. `studio/render` is built (`deno task render`):
   deterministic spec -> `index.html`, idempotent, two themes picked by hashing the id.
-- `exhibition/` — the viewer webapp. Not yet scaffolded.
+- `exhibition/` — the viewer: `exhibition/api` (Deno, port 8002, no write permission) serves the
+  day's exhibition at `/` and only that exhibition's clips at `/media/<id>.mp4`. Deploy:
+  `exhibition/deploy/{build,start}.sh`. Feedback not built yet.
 - `docs/` — the backbone. Start with `VISION.md`; the stack and data formats are
   in `docs/STACK.md`; deployment topology in `docs/INFRASTRUCTURE.md`.
 

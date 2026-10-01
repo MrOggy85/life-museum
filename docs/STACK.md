@@ -265,6 +265,14 @@ when `reveal_dates` is `after` (a `<details>` element, no script) or `always`; a
 
 ### Exhibition (`exhibition/api`)
 
+Built. `GET /` serves the day's `index.html`; `GET /media/<capture_id>.mp4` serves a clip (with
+`Range`) only if the id appears in the displayed exhibition's `spec.md`, so the visitor cannot
+browse the archive. Read-only by construction (no write permission in the container). Rotation is a
+stateless pure function of (exhibition ids, JST date): each day steps by a hashed nonzero offset from
+the previous day's index, so consecutive days never repeat. The pool is exhibitions created before
+today's JST midnight (falling back to all rendered), so a nightly curate/render never changes the
+day's pick mid-day; new exhibitions enter tomorrow's pool. `.rejected/` and unrendered ones are never shown.
+
 Each day it selects one already-rendered exhibition from `collection/` and serves
 its `index.html` plus the clips it references, streamed read-only from `archive/`
 to the visitor's browser. That media read is **byte-serving to a human, never
