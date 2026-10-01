@@ -70,7 +70,9 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
   batch on the one shared home server (see `docs/INFRASTRUCTURE.md`). Tier-0 stages
   built (`deno task test`, `catalog/scripts/nightly.sh`); model stages not yet. `catalog/mcp/` is the
   read-only stdio MCP for curators (`query_catalog`, `overview`, `list_locations`, `get_specimen`).
-- `studio/` — curators and designer; scheduled, independent of visits.
+- `studio/` — curators and designer; scheduled, independent of visits. `studio/curate` is built
+  (`deno task curate`, `deno task test`): headless `claude -p` over the catalog MCP, voice lint,
+  spend cap. Curator definitions in `studio/curators/`. `studio/render` not yet.
 - `exhibition/` — the viewer webapp. Not yet scaffolded.
 - `docs/` — the backbone. Start with `VISION.md`; the stack and data formats are
   in `docs/STACK.md`; deployment topology in `docs/INFRASTRUCTURE.md`.

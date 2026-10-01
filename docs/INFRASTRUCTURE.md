@@ -209,8 +209,21 @@ Claude is the one metered resource. Controls, cheapest first:
   until it does.
 - **Every run records its usage** (turns, tokens, cost, taken from the CLI's JSON result) in
   the exhibition's `meta.json`, so cadence and model choice are decided from measurements.
-- **A hard ceiling.** `curate` refuses to start once a configured weekly/monthly cap is
-  reached.
+- **A hard ceiling.** `curate` refuses to start once the weekly cap is reached, summing
+  `usage.cost_usd` over `collection/*/meta.json` and `collection/.rejected/*/meta.json`
+  (discarded runs still cost money). It also refuses while the catalog holds too few specimens.
+- **Hardened headless run.** `claude -p --output-format json --tools "" --mcp-config <file>
+  --strict-mcp-config --allowedTools mcp__catalog --permission-mode dontAsk
+  --disable-slash-commands --no-session-persistence --max-turns N --max-budget-usd X`, from an
+  empty temp cwd with the prompt on stdin. The model has no file or shell tools; it returns the
+  spec as text and `curate` writes it. `--bare` is unusable because it disables OAuth.
+  `--max-turns` is a hidden flag on this CLI version; `--max-budget-usd` is the enforced bound.
+- **Declines and rejects are kept.** A model may reply `DECLINE: <reason>` when it cannot
+  justify an exhibition; that and lint-failed drafts land in `collection/.rejected/<id>/`
+  and are never rendered. Measured on a thin fixture: one declined run, 3 turns, about $0.08.
+- **Configuration** (environment): `DATA_ROOT`, `CURATE_MAX_TURNS` (8), `CURATE_MAX_RUN_USD`
+  (1), `CURATE_WEEKLY_CAP_USD` (5), `CURATE_MIN_SPECIMENS` (30), `CURATE_MODEL`, `CLAUDE_BIN`;
+  `--curator=name@vN` forces a curator instead of a random one.
 - **The token may be a subscription token.** `CLAUDE_CODE_OAUTH_TOKEN` draws on the same usage
   allowance as interactive Claude Code, so a scheduled job can use up the headroom the
   operator wanted for themselves. Treat the cap as protecting that allowance, not just a
@@ -228,10 +241,10 @@ Everything is the user's `crontab` on odin, following the existing house style (
 
 # Curate: three exhibitions a week, after the catalog window (needs the Anthropic token)
 45 4 * * 1,3,5   CLAUDE_CODE_OAUTH_TOKEN=$(cat ~/.config/life-museum/oauth) \
-                 ~/.deno/bin/deno task -C ~/life-museum/studio/curate curate >> $LOG/life-museum-curate.log 2>> $LOG/error.log
+                 ~/.deno/bin/deno task -C ~/life-museum/studio curate >> $LOG/life-museum-curate.log 2>> $LOG/error.log
 
 # Render any spec lacking HTML (deterministic, idempotent; also picks up theme changes)
-55 4 * * *   ~/.deno/bin/deno task -C ~/life-museum/studio/render render >> $LOG/life-museum-render.log 2>> $LOG/error.log
+55 4 * * *   ~/.deno/bin/deno task -C ~/life-museum/studio render >> $LOG/life-museum-render.log 2>> $LOG/error.log
 ```
 
 `capture` and `exhibition` are small always-on Deno services started like the machine's other
