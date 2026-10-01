@@ -89,7 +89,7 @@ relied on.
 | whisper.cpp | one stage of the window | tiny/base model files are 75 / 142 MiB; runtime *TBD* | no |
 | small VLM | one stage of the window | *TBD* | no |
 | embeddings | one stage of the window | *TBD* | no |
-| Jeff (own container) | one stage of the window | 2.4 GB steady, 4.25 GB peak | no |
+| Jeff (shared `poker-jeff` container, started/stopped on demand) | one stage of the window | 2.4 GB steady, 4.25 GB peak | no |
 | catalog MCP | per curate run | small | no |
 | `studio` curate | a few times a week | one `claude` CLI process, *TBD* | **yes** |
 | `studio` render | daily, seconds | small | no |
@@ -105,7 +105,8 @@ The rules that keep this from disturbing the other services:
    *largest* model, not their sum, and model load time is paid once per night, not once per
    clip.
 3. **Pre-flight before every window; skip rather than squeeze.** The batch does nothing if
-   - poker-ai's model containers are up (a watched tournament holds ~2 of the 4 cores), or
+   - poker-ai has a viewer connected (a watched tournament holds ~2 of the 4 cores and uses
+     Jeff itself), or the data root's disk is not mounted, or
    - `MemAvailable` is below `peak(next model) + 2 GiB` (the margin is a starting value), or
    - another instance holds the lock.
 
@@ -116,17 +117,30 @@ The rules that keep this from disturbing the other services:
    cliff. Run model containers with `--cpus=3`, `OMP_NUM_THREADS=3` (torch ignores the cgroup
    quota), and a low `--cpu-shares` so Immich, Paperless and Mattermost win any contention.
    Whisper and the VLM need their own thread sweep.
-5. **Jeff is a single-request server and poker-ai owns its instance.** It rejects a second
-   concurrent request with `529`, and poker-ai treats any 529 as evidence of a stray caller.
-   So life-museum **never talks to poker-ai's Jeff**. It runs *its own container* (own name,
-   own port — 8777, 8778 and 8780–8782 are taken) **from the existing `poker-jeff:latest`
-   image** (6.49 GB; a second copy would cost disk for nothing). That image already carries
-   poker-ai's hard-won fixes (CPU torch, `fla` removed, no `uv run`). If poker-ai is ever
-   retired, keep that image or rebuild it from `~/poker-ai/models/jeff/`.
+5. **Jeff is shared with poker-ai, and can disappear at any time.** The `poker-jeff` container
+   is a generic Jeff (confirmed with poker-ai) and this project uses it rather than a second
+   copy. It is single-request (a second concurrent request gets `529`, `Retry-After: 1`), and
+   poker-ai's `deploy/models-ondemand.sh` (user cron, every minute) **stops it after 10 minutes
+   with no poker viewer** and restarts it when one connects. So the cataloguer must:
+   - **start it on demand** (`docker -c default start poker-jeff`, then poll `/health`; a cold
+     start takes about a minute), and **stop it when done** — but only if *it* started it and
+     poker-ai has no viewer; otherwise leave it to poker-ai's idle timer;
+   - **tolerate it vanishing mid-stage:** on a connection error or failed health check, re-run
+     the start-and-wait step and retry the item, bounded (e.g. 3 restarts per night), then
+     skip the stage rather than loop; on `529`, back off and retry (another caller is using
+     it);
+   - never run Jeff stages while poker-ai has a viewer (pre-flight, rule 3).
+
+   Open point for poker-ai's side: its idle timer can stop Jeff mid-batch. A lease file that
+   `models-ondemand.sh` honours (skip the stop while it exists) would remove the flapping;
+   until then the restart path above is the safety net. The image carries poker-ai's CPU-inference
+   fixes (CPU torch, `fla` removed, no `uv run`); if poker-ai is retired, keep the image or
+   rebuild it from `~/poker-ai/models/jeff/`.
 6. **Time-boxed window.** The batch takes a `--deadline`; at the deadline it finishes the
    current item and exits. Initial window **01:00–04:30 JST**, chosen to end before the
    existing 05:00 (Sunday) / 06:00 / 07:30 cron jobs.
-7. **Disk is a budget too.** `/home` is 76% used (95 GiB free). The archive is ~7 GB/year at
+7. **Disk is a budget too.** The data root is on the external SSD (`/mnt/usbssd`, 1.8 TB, 1.6 TB
+   free); `/home` is 76% used. The archive is ~7 GB/year at
    10 clips/day (estimate from the ideation transcript); the *bootstrap import* of the existing
    photo/video library is unsized — measure it before importing. Temp frames and audio are
    written to a scratch dir and deleted per item.
@@ -245,19 +259,27 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
 
 ## Storage & backups
 
-- All durable state lives under **one data root** outside the repo. **`~/museum-data`** (decided;
-  earlier drafts wrote `/data`, which is shorthand for this root). `/home` has 95 GiB free.
+- All durable state lives under **one data root** outside the repo. **`/mnt/usbssd/museum-data`**
+  (decided; earlier drafts wrote `/data`, which is shorthand for this root). It is an
+  `ext4` USB SSD mounted via `fstab` with `nofail`, so if the disk is absent the mount point is
+  just an empty directory on the root filesystem: every writer must **refuse to start unless
+  the data root is on a mounted filesystem** (compare `st_dev` with its parent), or captures
+  would silently land on the wrong disk. The directory must be created once with
+  `sudo install -d -o oskar -g oskar /mnt/usbssd/museum-data` (the mount is root-owned).
+  Model weights go in `models/` under it.
 - **The archive, collection and feedback are the irreplaceable stores** (append-only); the
   catalog is derived and can be rebuilt from the archive, so it is optional to back up.
-- This machine already has backup jobs (`~/borg/`, an `rclone` sync to Backblaze). **Add the
-  data root to them before the first real capture or import** — otherwise the archive is one
+- **The same USB SSD also holds the local borg repositories** (`/mnt/usbssd/borg`), so a
+  borg copy of the data root onto it is *not* a second copy. The archive needs a backup
+  target on a different device (the existing Backblaze `rclone` job is the natural one). Add
+  the data root to it before the first real capture or import — otherwise the archive is one
   disk with no copy, which is exactly how Kotoba ended up unprotected.
 
 ## Failure modes
 
 | Situation | Effect |
 | --------- | ------ |
-| Machine busy / poker-ai running / low memory | pre-flight skips the window; catalog lags; everything else runs |
+| Machine busy / poker-ai watched / low memory / data disk not mounted | pre-flight skips the window; catalog lags; everything else runs |
 | Window deadline reached mid-backlog | current item finishes, batch exits; resumes next night |
 | Process killed or OOM mid-stage | no partial write (one transaction per item); item redone next window |
 | Bad media / model crash | stage `fail`s; after N tries marked `failed` for that stage and surfaced |

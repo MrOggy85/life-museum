@@ -90,7 +90,7 @@ semicolons, single quotes.
 ## The data stores (on disk)
 
 All durable state lives under a single data root (written `/data` below; the real path
-is chosen at scaffolding — see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#storage--backups)).
+is `/mnt/usbssd/museum-data` — see [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md#storage--backups)).
 Temp frames/audio go to a scratch dir and are deleted per item. Each SQLite file has
 **one writer**, which keeps the append-only and one-way invariants from
 `ARCHITECTURE.md` structural rather than conventional.
