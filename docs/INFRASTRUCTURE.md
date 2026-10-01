@@ -226,8 +226,8 @@ a local port — `immich`, `paperless`, `mattermost`, `kotoba`, `poker`, …), s
 follows the same convention; each new service needs one-time admin approval:
 
 ```
-tailscale serve --service=svc:museum  --bg 8002    # exhibition (visitor)
-tailscale serve --service=svc:capture --bg 8001    # capture   (subject)
+tailscale serve --service=svc:life-museum         --bg 8002   # exhibition (visitor)
+tailscale serve --service=svc:life-museum-capture --bg 8001   # capture    (subject)
 ```
 
 (8001 and 8002 were free on 2026-10-01; re-check with `ss -ltn` when scaffolding.) Everything
@@ -245,9 +245,8 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
 
 ## Storage & backups
 
-- All durable state lives under **one data root** outside the repo. `/data` (assumed in earlier
-  drafts) **does not exist on this machine**; pick the path when scaffolding (`/home` has
-  95 GiB free).
+- All durable state lives under **one data root** outside the repo. **`~/museum-data`** (decided;
+  earlier drafts wrote `/data`, which is shorthand for this root). `/home` has 95 GiB free.
 - **The archive, collection and feedback are the irreplaceable stores** (append-only); the
   catalog is derived and can be rebuilt from the archive, so it is optional to back up.
 - This machine already has backup jobs (`~/borg/`, an `rclone` sync to Backblaze). **Add the
@@ -276,11 +275,8 @@ stays tailnet-only. There is no machine-to-machine API any more, so no bearer to
   for *observational* wording. If none is good enough, the levers that keep the firewall are a
   bigger local model run less often, or fewer frames per clip; sending frames to Claude would
   break it and is not assumed.
-- **Weather source.** The catalog lists weather, but nothing here is a local source for it.
-  Historical weather by coordinates + time needs an external lookup, which would be a second
-  cloud egress. Options: coarsen coordinates before the lookup, or omit weather in v1.
-- **Reverse geocoding source** (`place_name`): an offline gazetteer (coarse, fully local) vs
-  anything that sends coordinates out.
+- **Decided: no weather in v1** (it would need a second cloud egress), and **`place_name`
+  comes from an offline gazetteer** (coarse, fully local). Revisit weather later if wanted.
 - **Curate cadence and model.** 3/week and a mid-tier default model are assumptions. Decide from
   the first weeks of recorded usage; also whether the model is pinned per `curator@version`.
 - **Whisper / embeddings footprint and thread counts** — not measured here yet.

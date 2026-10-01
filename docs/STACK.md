@@ -145,12 +145,12 @@ specimen
   capture_id            # → archive
   captured_at           # timestamp + timezone                       (from the client)
   lat, lon              # coordinates                                (from the client)
-  place_name            # reverse-geocoded; offline gazetteer vs lookup is open (tier 0)
+  place_name            # offline gazetteer, coarse, fully local (tier 0)
   duration_seconds      # ffprobe                                    (tier 0)
   motion_state          # still | walking | vehicle … GPS speed / frame difference (tier 0)
   time_of_day           # dawn | morning | midday | evening | night — solar position (tier 0)
-  weather_temp_c        # no local source yet — open, may be omitted in v1
-  weather_conditions    # clear | rain | overcast … — same
+  weather_temp_c        # NOT in v1 (no local source; would need cloud egress)
+  weather_conditions    # NOT in v1 — same
   dominant_colors       # [{hex, weight}, …]                         (tier 0)
   audio_events          # [traffic, birds, speech, music, silence, …] — loudness/silence
                         #   by code (tier 0); labelled events need a model (open)
