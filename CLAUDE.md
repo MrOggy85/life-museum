@@ -78,6 +78,7 @@ Scarcity is a feature: show few (typically 5–8), rotate, let them disappear.
 - `exhibition/` — the viewer: `exhibition/api` (Deno, port 8002, no write permission) serves the
   day's exhibition at `/` and only that exhibition's clips at `/media/<id>.mp4`. Deploy:
   `exhibition/deploy/{build,start}.sh`. Feedback not built yet.
+- `docs/DESIGN-DIRECTION.md` — agreed direction for richer, free-form exhibitions (not yet built).
 - `docs/` — the backbone. Start with `VISION.md`; the stack and data formats are
   in `docs/STACK.md`; deployment topology in `docs/INFRASTRUCTURE.md`.
 
