@@ -6,8 +6,9 @@ client_uuid is the Immich asset id, so re-running never duplicates a clip.
 Clips are tagged device_model "immich-import" so they stay distinguishable from live captures.
 Selection is round-robin across years, then random within a year; the media itself is never inspected.
 """
-import argparse, json, os, subprocess, sys, tempfile
+import argparse, json, os, sqlite3, subprocess, sys, tempfile
 
+ARCHIVE_DB = os.environ.get('ARCHIVE_DB', '/mnt/usbssd/museum-data/archive/archive.sqlite')
 HOST_ROOT = os.path.expanduser('~/resilio-sync/sync/iphone_photos')
 CONTAINER_ROOT = '/home/user/iphone_photos/'
 TYPES = {'.mov': 'video/quicktime', '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.3gp': 'video/3gpp'}
@@ -52,10 +53,15 @@ def main():
     ap.add_argument('--apply', action='store_true')
     args = ap.parse_args()
 
+    db = sqlite3.connect(f'file:{ARCHIVE_DB}?mode=ro', uri=True)
+    have = {r[0] for r in db.execute('select client_uuid from captures')}
+    db.close()
     picked, skipped = [], 0
     for c in candidates(args.min_seconds, args.max_seconds):
         if len(picked) >= args.count:
             break
+        if c['id'] in have:
+            continue
         if not c['path'].startswith(CONTAINER_ROOT):
             skipped += 1
             continue
