@@ -19,3 +19,7 @@ Env: `DATA_ROOT` (required), `MOUNT_POINT` (default: `DATA_ROOT`; the mount the 
   A crash between the clip rename and the row insert can leave an orphan clip file; the retry stores a new one.
 - Tests: `deno task test` in each of `api/` and `client/`. The offline queue and uploader logic live in plain modules
   under `client/src/`.
+- **Backfill from Immich.** `tools/import_from_immich.py` (dry run unless `--apply`) uploads short clips from the
+  Immich library through the capture API. Read-only on Immich and the media; `client_uuid` is the Immich asset id, so
+  re-runs never duplicate; clips carry `device_model = "immich-import"`. Selection is random (round-robin by year),
+  so a dry run and the following `--apply` pick different clips.
