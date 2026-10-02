@@ -1,0 +1,130 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Design concepts (placeholders)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#0b0b0c;color:#d8d4cc;font:14px/1.45 ui-sans-serif,system-ui,sans-serif;overflow:hidden}
+nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;gap:6px;padding:10px 14px;background:#0b0b0cdd;backdrop-filter:blur(6px);align-items:center}
+nav b{margin-right:10px;font-weight:500;letter-spacing:.04em;color:#8a857a}
+nav button{background:none;border:1px solid #3a3833;color:#bdb8ad;padding:5px 11px;border-radius:99px;cursor:pointer;font:inherit}
+nav button.on{background:#d8d4cc;color:#0b0b0c;border-color:#d8d4cc}
+.view{position:absolute;inset:0;padding-top:52px;display:none;overflow:auto}
+.view.on{display:block}
+.note{position:fixed;left:14px;bottom:12px;z-index:40;max-width:520px;font-size:12px;color:#8a857a;background:#0b0b0cd9;padding:8px 10px;border-radius:6px}
+.note em{color:#d8d4cc;font-style:normal}
+
+/* placeholder "clip": a moving gradient standing in for a looping video */
+.clip{position:relative;overflow:hidden;background:var(--g);background-size:300% 300%;animation:shift var(--d,6s) ease-in-out infinite alternate}
+.clip::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:100%;background:#ffffff88;transform-origin:left;animation:bar var(--d,6s) linear infinite}
+.clip .cap{position:absolute;left:8px;top:6px;font-size:11px;color:#fffc;text-shadow:0 1px 3px #000a;opacity:0;transition:.25s}
+@keyframes shift{from{background-position:0 0}to{background-position:100% 100%}}
+@keyframes bar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* 1 wall */
+#wall .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:2px}
+#wall .clip{aspect-ratio:9/16;transition:transform .3s,z-index 0s;cursor:pointer}
+#wall .clip:hover{transform:scale(2.4);z-index:5;box-shadow:0 20px 60px #000}
+#wall .clip:hover .cap{opacity:1}
+/* 2 corridor */
+#corr{padding:0}
+#corr .spacer{height:520vh;position:relative}
+#corr .stick{position:sticky;top:0;height:100vh;overflow:hidden}
+#corr .track{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;gap:7vw;padding:0 12vw;will-change:transform}
+#corr .clip{flex:none;border-radius:2px}
+#corr .lab{position:absolute;bottom:-26px;left:0;font-size:12px;color:#8a857a;white-space:nowrap}
+#corr .item{position:relative;flex:none}
+/* 3 focus */
+#focus{padding:0;scroll-snap-type:y mandatory}
+#focus .slide{height:100vh;scroll-snap-align:start;position:relative;overflow:hidden}
+#focus .slide .clip{position:absolute;inset:0;transform:scale(1.08);transition:transform 2.2s,opacity 1s;opacity:.25}
+#focus .slide.in .clip{transform:scale(1);opacity:1}
+#focus .meta{position:absolute;left:5vw;bottom:8vh;font-size:13px;letter-spacing:.04em;text-shadow:0 2px 12px #000;opacity:0;transform:translateY(12px);transition:.9s .5s}
+#focus .slide.in .meta{opacity:1;transform:none}
+#focus .badge{position:absolute;right:20px;top:64px;font-size:11px;padding:4px 9px;border:1px solid #fff6;border-radius:99px;background:#0008}
+/* 4 dial */
+#dial{display:none;place-items:center}
+#dial.on{display:grid}
+#dial .ring{position:relative;width:min(78vh,78vw);aspect-ratio:1;border:1px solid #2d2b27;border-radius:50%}
+#dial .ring::before{content:"";position:absolute;inset:18%;border:1px dashed #23211e;border-radius:50%}
+#dial .clip{position:absolute;width:11%;aspect-ratio:9/16;transform:translate(-50%,-50%);transition:transform .35s;cursor:pointer;border-radius:2px}
+#dial .clip:hover{transform:translate(-50%,-50%) scale(3);z-index:9}
+#dial .clip:hover .cap{opacity:1}
+#dial .h{position:absolute;font-size:11px;color:#6d695f;transform:translate(-50%,-50%)}
+#dial .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#8a857a;pointer-events:none}
+/* 5 drift */
+#drift{overflow:hidden}
+#drift .clip{position:absolute;cursor:pointer;box-shadow:0 10px 40px #0008;transition:box-shadow .3s}
+#drift .clip.top{z-index:20;box-shadow:0 30px 90px #000}
+#drift .clip.top .cap{opacity:1}
+</style>
+
+<nav><b>CONCEPTS</b>
+<button data-v="wall" class="on">1 Wall of loops</button><button data-v="corr">2 Corridor</button>
+<button data-v="focus">3 Focus</button><button data-v="dial">4 Dial</button><button data-v="drift">5 Drift</button></nav>
+
+<section class="view on" id="wall"><div class="grid"></div></section>
+<section class="view" id="corr"><div class="spacer"><div class="stick"><div class="track"></div></div></div></section>
+<section class="view" id="focus"></section>
+<section class="view" id="dial"><div class="ring"><div class="mid">24 hours<br>position = local hour</div></div></section>
+<section class="view" id="drift"></section>
+
+<div class="note" id="note"></div>
+
+<script>
+const NOTES={
+ wall:'<em>Wall of loops.</em> Forty silent loops at once. Hover pulls one forward with its placard (and, where the browser trusts the site, its sound). Fits "forty clips that share X", where the volume is the point.',
+ corr:'<em>Corridor.</em> Scrolling down walks you sideways through clips at different scales; placards sit underneath like wall labels. Fits chronological or "spaces visited in order" exhibitions.',
+ focus:'<em>Focus.</em> One clip fills the screen at a time and starts when it arrives (sound attempted, falls back to silent with a badge). Fits a few strong specimens where each deserves the whole room.',
+ dial:'<em>Dial.</em> Layout is data: each clip sits at its local hour on a 24 h ring. The shape of a day appears without any caption. Fits "what else happens at this hour".',
+ drift:'<em>Drift.</em> Clips of different sizes float slowly across a dark floor; click brings one forward. Fits loose, associative sets with no order.'
+};
+const PAL=[['#7a2e2a','#d98c5f','#2b1a1a'],['#1b3a4b','#7fb7be','#0d1b24'],['#3d4a2a','#c9c27a','#171b0f'],['#42305b','#b99bd6','#17101f'],
+ ['#5b4a3a','#e8d8b0','#1e1812'],['#23323a','#9fb3b8','#0c1214'],['#5a2a4a','#e39bb0','#1b0e16'],['#2b2b2b','#d9d9d9','#0a0a0a']];
+const PL=['Minatomirai','Chita','Yokohama','Shibuya','Kamakura','Odaiba'],TOD=['dawn','morning','midday','afternoon','evening','night'];
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const mk=(i,extra='')=>{const p=PAL[Math.floor(rnd()*PAL.length)],d=(2+rnd()*3).toFixed(1);
+ const e=document.createElement('div');e.className='clip';
+ e.style.setProperty('--g',`linear-gradient(${Math.floor(rnd()*360)}deg,${p[0]},${p[1]},${p[2]},${p[1]})`);e.style.setProperty('--d',d+'s');
+ e.innerHTML=`<span class="cap">${PL[i%PL.length]} · ${TOD[i%6]} · ${d} s</span>`;return e;};
+
+// 1 wall
+const g=document.querySelector('#wall .grid');for(let i=0;i<40;i++)g.append(mk(i));
+// 2 corridor
+const track=document.querySelector('#corr .track');
+for(let i=0;i<14;i++){const it=document.createElement('div');it.className='item';const c=mk(i);
+ const w=[220,340,260,420,300][i%5],land=i%3==0;c.style.width=w+'px';c.style.height=(land?w*.56:w*1.6)+'px';
+ it.style.marginTop=((i%4)-1.5)*40+'px';it.append(c);const l=document.createElement('div');l.className='lab';
+ l.textContent=`${PL[i%PL.length]}, ${TOD[i%6]}. Duration ${(2+rnd()*3).toFixed(1)} seconds.`;it.append(l);track.append(it);}
+const corr=document.getElementById('corr');
+corr.addEventListener('scroll',()=>{const max=corr.scrollHeight-corr.clientHeight,p=corr.scrollTop/max;
+ track.style.transform=`translateX(${-p*(track.scrollWidth-corr.clientWidth)}px)`;});
+// 3 focus
+const focus=document.getElementById('focus');
+for(let i=0;i<6;i++){const s=document.createElement('div');s.className='slide';s.append(mk(i+3));
+ const m=document.createElement('div');m.className='meta';m.textContent=`${PL[i%PL.length]}, ${TOD[(i+2)%6]}. Duration ${(2+rnd()*3).toFixed(1)} seconds.`;s.append(m);
+ const b=document.createElement('div');b.className='badge';b.textContent=i%2?'sound on (site trusted)':'muted: click for sound (autoplay blocked)';s.append(b);focus.append(s);}
+const io=new IntersectionObserver(es=>es.forEach(e=>e.target.classList.toggle('in',e.isIntersecting)),{root:focus,threshold:.6});
+focus.querySelectorAll('.slide').forEach(s=>io.observe(s));
+// 4 dial
+const ring=document.querySelector('#dial .ring');
+for(let h=0;h<24;h+=3){const a=(h/24)*2*Math.PI-Math.PI/2,t=document.createElement('div');t.className='h';t.textContent=String(h).padStart(2,'0');
+ t.style.left=50+54*Math.cos(a)+'%';t.style.top=50+54*Math.sin(a)+'%';ring.append(t);}
+for(let i=0;i<36;i++){const hr=[7,8,8,9,12,12,13,15,16,17,18,18,19,19,19,20,20,21,22,23,23,0,1,10,11,14,17,18,19,20,12,8,19,21,6,13][i];
+ const a=((hr+rnd())/24)*2*Math.PI-Math.PI/2,r=30+rnd()*14,c=mk(i);c.style.left=50+r*Math.cos(a)+'%';c.style.top=50+r*Math.sin(a)+'%';ring.append(c);}
+// 5 drift
+const drift=document.getElementById('drift');const items=[];
+for(let i=0;i<16;i++){const c=mk(i),w=120+rnd()*260;c.style.width=w+'px';c.style.height=w*(rnd()>.5?1.7:.58)+'px';drift.append(c);
+ items.push({c,x:rnd()*innerWidth,y:60+rnd()*(innerHeight-200),vx:(rnd()-.5)*.25,vy:(rnd()-.5)*.15});
+ c.onclick=()=>{drift.querySelectorAll('.top').forEach(t=>t.classList.remove('top'));c.classList.add('top');};}
+(function tick(){for(const o of items){if(o.c.classList.contains('top'))continue;o.x+=o.vx;o.y+=o.vy;
+ if(o.x<-100||o.x>innerWidth-60)o.vx*=-1;if(o.y<50||o.y>innerHeight-120)o.vy*=-1;o.c.style.transform=`translate(${o.x}px,${o.y}px)`;}
+ requestAnimationFrame(tick);})();
+
+// nav
+const note=document.getElementById('note');
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id===v));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));note.innerHTML=NOTES[v];
+ if(v==='focus'){const f=document.getElementById('focus');f.scrollTop=0;f.querySelector('.slide').classList.add('in');}}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));show('wall');
+</script>
