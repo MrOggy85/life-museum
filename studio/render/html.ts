@@ -1,7 +1,7 @@
 import { parseSpec } from '../lib/spec.ts';
 import { THEMES } from './themes.ts';
 
-export const RENDERER_VERSION = 1;
+export const RENDERER_VERSION = 2;
 
 export interface RenderInput {
   specText: string;
@@ -42,7 +42,7 @@ export function renderHtml(i: RenderInput): string {
     const id = esc(it.id);
     out.push(
       `<figure class="specimen" id="s-${id}">` +
-        `<video src="/media/${id}.mp4" controls muted loop playsinline preload="metadata"></video>` +
+        `<video src="/media/${id}.mp4" controls loop playsinline preload="metadata"></video>` +
         `<figcaption><p class="placard">${esc(it.placard)}</p>${dateBlock(mode, i.dates.get(it.id))}</figcaption>` +
         `</figure>`,
     );
