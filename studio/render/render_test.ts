@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from '@std/assert';
-import { renderHtml, themeFor } from './html.ts';
+import { RENDERER_VERSION, renderHtml, themeFor } from './html.ts';
 import { renderCollection } from './run.ts';
 import { THEMES } from './themes.ts';
 
@@ -62,7 +62,7 @@ Deno.test('collection: renders missing, skips fresh, re-renders on edit, skips .
   const r1 = await renderCollection(root);
   assertEquals([r1.rendered, r1.unchanged.length, r1.failed], [['e1'], 0, []]);
   const meta = JSON.parse(await Deno.readTextFile(`${root}/collection/e1/meta.json`));
-  assertEquals([meta.exhibition_id, meta.usage.cost_usd, meta.render.version], ['e1', 0.1, 1]);
+  assertEquals([meta.exhibition_id, meta.usage.cost_usd, meta.render.version], ['e1', 0.1, RENDERER_VERSION]);
   assertEquals(await Deno.stat(`${root}/collection/.rejected/r1/index.html`).then(() => true, () => false), false);
 
   const html = await Deno.readTextFile(`${root}/collection/e1/index.html`);
