@@ -36,6 +36,7 @@ const ARRANGED = `
 .corridor .specimen[data-n="3"] video{height:70vh}
 .corridor .specimen[data-n="4"] video{height:54vh}
 .corridor figcaption{position:absolute;left:0;top:100%;padding-top:.4rem;white-space:nowrap;font-size:.8rem}
+.arr-dial{overflow-x:hidden}
 .dial{display:grid;place-items:center;padding:3rem 0}
 .ring{position:relative;width:min(78vh,92vw);aspect-ratio:1;border:1px solid #8884;border-radius:50%}
 .ring::before{content:"";position:absolute;inset:18%;border:1px dashed #8883;border-radius:50%}
