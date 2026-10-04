@@ -212,3 +212,14 @@ Deno.test('curate: skips on thin catalog and on spend cap, without calling claud
   assertEquals(o.status, 'skipped');
   assertStringIncludes((o as { reason: string }).reason, 'cap');
 });
+
+Deno.test('lint: arrangement and playback vocabulary is validated', () => {
+  const body = (arr: string, play: string) =>
+    `---\ntitle: T\nthesis: One line.\narrangement: ${arr}\n---\n\n` +
+    ['a', 'b', 'c', 'd'].map((i) => `![${i === 'a' ? play : ''}](capture_${i})\nFact ${i}.\n`).join('\n');
+  const o = { knownIds: () => true };
+  assertEquals(lintSpec(body('wall', 'loop'), o), []);
+  assertEquals(lintSpec(body('dial', 'hover'), o), []);
+  assertEquals(lintSpec(body('carousel', ''), o).map((v) => v.rule), ['frontmatter']);
+  assertEquals(lintSpec(body('wall', 'spin'), o).map((v) => v.rule), ['playback']);
+});

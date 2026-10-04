@@ -1,4 +1,4 @@
-import { type ParsedSpec, parseSpec } from './spec.ts';
+import { ARRANGEMENTS, type ParsedSpec, parseSpec, PLAY_MODES } from './spec.ts';
 
 export interface Violation {
   rule: string;
@@ -43,7 +43,11 @@ export function lintParsed(spec: ParsedSpec, o: LintOptions): Violation[] {
   const v: Violation[] = [];
   const { front, items } = spec;
   const min = o.minItems ?? 4;
-  const max = o.maxItems ?? 10;
+  const arr = front.arrangement;
+  const max = o.maxItems ?? (arr === 'wall' ? 24 : 10);
+  if (arr !== undefined && !(ARRANGEMENTS as readonly string[]).includes(String(arr))) {
+    v.push({ rule: 'frontmatter', where: 'arrangement', detail: `must be one of ${ARRANGEMENTS.join(', ')}` });
+  }
 
   for (const k of ['title', 'thesis'] as const) {
     const val = front[k];
@@ -69,6 +73,9 @@ export function lintParsed(spec: ParsedSpec, o: LintOptions): Violation[] {
     if (seen.has(it.id)) v.push({ rule: 'duplicate', where, detail: 'specimen listed twice' });
     seen.add(it.id);
     if (!o.knownIds(it.id)) v.push({ rule: 'unknown-id', where, detail: 'not in the catalog' });
+    if (it.play !== null && !(PLAY_MODES as readonly string[]).includes(it.play)) {
+      v.push({ rule: 'playback', where, detail: `must be one of ${PLAY_MODES.join(', ')}` });
+    }
     if (!it.placard) v.push({ rule: 'placard', where, detail: 'missing placard' });
     else {
       voice(it.placard, where, v);

@@ -1,6 +1,7 @@
 import { assertDataRootReady } from './guard.ts';
 import { captureIdsOf, listRendered } from './collection.ts';
 import { type MediaSource, openMediaSource, serveClip } from './media.ts';
+import { PLAYER_JS } from './player.ts';
 import { jstDate, pickForDay } from './rotation.ts';
 
 export type HandlerOptions = {
@@ -10,7 +11,7 @@ export type HandlerOptions = {
 };
 
 const SECURITY = {
-  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; media-src 'self'",
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; media-src 'self'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
 };
@@ -41,6 +42,12 @@ export function makeHandler(opts: HandlerOptions): (req: Request) => Promise<Res
       const html = await Deno.readFile(`${opts.collectionDir}/${id}/index.html`);
       return new Response(html, {
         headers: { ...SECURITY, 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' },
+      });
+    }
+
+    if (pathname === '/_/player.js') {
+      return new Response(PLAYER_JS, {
+        headers: { ...SECURITY, 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' },
       });
     }
 

@@ -40,6 +40,7 @@ Output the spec and nothing else: no commentary, no code fence. Do not write cur
 title: <short name, under 80 characters, no punctuation like ! or ?>
 thesis: <one line, under 200 characters: why these specimens belong together>
 reveal_dates: never | after | always   # optional
+arrangement: list | wall | corridor | dial   # optional, default list; see "Arrangement" below
 sections:                               # optional; only if grouping carries meaning
   - <name>
 ---
@@ -49,6 +50,14 @@ sections:                               # optional; only if grouping carries mea
 
 ![](capture_<id>)
 <placard>
+
+Arrangement (optional, a presentation choice only; the specimens and their order stay yours):
+- list: one clip after another, press play. The default.
+- wall: all clips shown together as silent loops; suits many short clips sharing one property. Up to 24 specimens.
+- corridor: clips in a row walked through by scrolling; suits an order in time or place.
+- dial: clips placed on a 24-hour ring by local time of capture; suits a theme that varies by hour. Not for exhibitions about place only.
+A specimen may carry a playback mode as the image text, e.g. ![loop](capture_<id>): press (controls, default for list), loop (silent loop while in view),
+view (loop with sound while in view), hover (plays on pointer or tap). Use it sparingly; most specimens need none. Never write layout, CSS or HTML.
 
 Rules: specimens appear in exhibition order; each reference is followed by its placard on the next line; blank line between specimens; if you declare sections, use each as a "## <name>" heading. Placards state observable facts only (place, time of day, motion, audio, colors, counts, dates). The subject is never "you".
 ${

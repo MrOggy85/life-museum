@@ -27,6 +27,26 @@ function loadDates(catalogPath: string, ids: string[]): Map<string, string> {
   return dates;
 }
 
+function loadHours(catalogPath: string, ids: string[]): Map<string, number> {
+  const hours = new Map<string, number>();
+  try {
+    const db = new Database(catalogPath, { readonly: true });
+    try {
+      const q = db.prepare('SELECT substr(captured_at,12,5) AS t FROM specimen WHERE capture_id = ?');
+      for (const id of ids) {
+        const t = (q.get(id) as { t: string } | undefined)?.t;
+        const m = t?.match(/^(\d\d):(\d\d)$/);
+        if (m) hours.set(id, Number(m[1]) + Number(m[2]) / 60);
+      }
+    } finally {
+      db.close();
+    }
+  } catch {
+    // no catalog: the dial falls back to the wall
+  }
+  return hours;
+}
+
 async function readJson(path: string): Promise<Record<string, unknown>> {
   try {
     return JSON.parse(await Deno.readTextFile(path));
@@ -64,7 +84,11 @@ export async function renderCollection(dataRoot: string, force = false): Promise
 
       const parsed = parseSpec(specText);
       const dates = loadDates(`${dataRoot}/catalog/catalog.sqlite`, parsed.items.map((i) => i.id));
-      const html = renderHtml({ specText, theme, dates });
+      const ids = parsed.items.map((i) => i.id);
+      const hours = parsed.front.arrangement === 'dial'
+        ? loadHours(`${dataRoot}/catalog/catalog.sqlite`, ids)
+        : undefined;
+      const html = renderHtml({ specText, theme, dates, hours });
       await Deno.writeTextFile(`${dir}/index.html.tmp`, html);
       await Deno.rename(`${dir}/index.html.tmp`, `${dir}/index.html`);
       meta.theme = theme;

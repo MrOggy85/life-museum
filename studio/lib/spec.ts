@@ -4,6 +4,8 @@ export interface SpecItem {
   id: string;
   placard: string;
   section: string | null;
+  /** Playback mode from the image alt text, `![loop](capture_x)`; null means the arrangement's default. */
+  play: string | null;
 }
 
 export interface ParsedSpec {
@@ -15,8 +17,11 @@ export interface ParsedSpec {
   sectionsUsed: string[];
 }
 
-const REF = /^!\[\]\(capture_([^)\s]+)\)\s*$/;
-const FIELD_ORDER = ['title', 'thesis', 'curator', 'created', 'sections', 'reveal_dates'];
+const REF = /^!\[([a-z]*)\]\(capture_([^)\s]+)\)\s*$/;
+export const ARRANGEMENTS = ['list', 'wall', 'corridor', 'dial'] as const;
+export const PLAY_MODES = ['press', 'loop', 'view', 'hover'] as const;
+
+const FIELD_ORDER = ['title', 'thesis', 'curator', 'created', 'arrangement', 'sections', 'reveal_dates'];
 
 export function splitFrontmatter(text: string): { front: Record<string, unknown>; body: string } {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -42,7 +47,7 @@ export function parseSpec(text: string): ParsedSpec {
     if (!line) {
       current = null;
     } else if (ref) {
-      current = { id: ref[1], placard: '', section };
+      current = { id: ref[2], placard: '', section, play: ref[1] || null };
       items.push(current);
     } else if (line.startsWith('## ')) {
       section = line.slice(3).trim();

@@ -84,3 +84,33 @@ Deno.test('collection: a broken spec is reported, others still render', async ()
   const r = await renderCollection(root);
   assertEquals([r.rendered, r.failed.map((f) => f.id)], [['good'], ['bad']]);
 });
+
+Deno.test('html: default arrangement is the list, with press-to-play and the player script', () => {
+  const h = renderHtml({ specText: spec(), theme: 'gallery', dates });
+  assertStringIncludes(h, '<body class="arr-list">');
+  assertStringIncludes(h, 'data-play="press"');
+  assertStringIncludes(h, '<script src="/_/player.js" defer></script>');
+});
+
+Deno.test('html: wall uses loop by default and per-item alt text overrides it', () => {
+  const s = spec('arrangement: wall\n').replace('![](capture_b)', '![view](capture_b)');
+  const h = renderHtml({ specText: s, theme: 'nocturne', dates });
+  assertStringIncludes(h, '<div class="grid">');
+  assertStringIncludes(h, 'id="s-a" data-play="loop"');
+  assertStringIncludes(h, 'id="s-b" data-play="view"');
+});
+
+Deno.test('html: corridor wraps a track; dial places by hour and falls back to wall without hours', () => {
+  const c = renderHtml({ specText: spec('arrangement: corridor\n'), theme: 'gallery', dates });
+  assertStringIncludes(c, '<div class="corridor"><div class="stick"><div class="track">');
+  const d = spec('arrangement: dial\n');
+  const hours = new Map([['a', 6], ['b', 18]]);
+  const dial = renderHtml({ specText: d, theme: 'gallery', dates, hours });
+  assertStringIncludes(dial, '<div class="dial">');
+  assertEquals(dial.includes('class="arr-dial"') || dial.includes('arr-dial'), true);
+  // 06:00 sits right of centre (left > 50%), 18:00 left of centre.
+  const left = (id: string) => Number(dial.match(new RegExp(`id="s-${id}"[^>]*left:([\\d.]+)%`))![1]);
+  assertEquals(left('a') > 50 && left('b') < 50, true);
+  const fallback = renderHtml({ specText: d, theme: 'gallery', dates, hours: new Map([['a', 6]]) });
+  assertStringIncludes(fallback, 'arr-wall');
+});

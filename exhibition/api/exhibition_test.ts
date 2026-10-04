@@ -105,3 +105,12 @@ Deno.test('an exhibition created today is held back until tomorrow, unless it is
   );
   assertEquals(await (await get(handler, '/')).text(), '<p>SHOWN</p>');
 });
+
+Deno.test('player script is served with a CSP that allows only same-origin scripts', async () => {
+  const { handler } = await fixture();
+  const r = await get(handler, '/_/player.js');
+  assertEquals([r.status, r.headers.get('content-type')], [200, 'text/javascript; charset=utf-8']);
+  assertEquals((await r.text()).includes('IntersectionObserver'), true);
+  const page = await get(handler, '/');
+  assertEquals(page.headers.get('content-security-policy')?.includes("script-src 'self'"), true);
+});
