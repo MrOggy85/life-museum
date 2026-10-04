@@ -38,7 +38,23 @@ the spec is the durable artifact.
 Build order: vocabulary and playback modes first, then the designer step once we can see what the vocabulary
 leaves unsaid.
 
+## Concept review (2026-10-05)
+Owner reviewed `docs/design-concepts.html` (wall of loops, corridor, focus, dial, drift): likes all five, **especially
+wall of loops, corridor and dial**. These are the first arrangements to build in the vocabulary.
+
+## Desktop first, "Request Desktop Site" must work
+Desktop (Brave/Chrome) is the design target, but the owner will sometimes open exhibitions on a phone with "Request
+Desktop Site" to get a glimpse. Requirements for the renderer and every designer artifact:
+- **No user-agent sniffing.** Layout depends only on viewport width and `pointer`/`hover` media features. Desktop mode
+  on iOS Safari and Android Chrome presents a layout viewport of about 980 px and ignores the viewport meta, so the
+  desktop layout must hold up at 980 px and scale down, not break.
+- **No hover-only interactions.** Anything revealed on hover (placard, sound, enlarge) needs a tap equivalent, via
+  `@media (hover: none)` or a click handler.
+- **Scroll-driven layouts use native scroll** (sticky + `IntersectionObserver`), not wheel events, so touch works.
+- **Autoplay budget:** a wall of many simultaneous loops is heavy on a phone. Cap concurrent playing videos (play only
+  those in view) and use `preload="none"` with posters beyond the first screenful.
+- A designer artifact that fails a 980 px render check falls back to the default design.
+
 ## Open
-- Concept examples for the owner to review (placeholders, no personal media): see `docs/design-concepts.html`.
 - How the designer's output is linted (allowed CSS/JS surface) and how a bad design degrades to the default.
 - Whether the voice rules apply to the designer's text (they should: no added copy beyond the placards).
