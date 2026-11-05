@@ -16,4 +16,4 @@ ENV HOST=0.0.0.0 \
 
 USER 1000
 # Read-only by construction: no --allow-write, so the gallery floor cannot edit the vault.
-CMD ["deno", "run", "--allow-net", "--allow-read=/mnt,/deno-dir", "--allow-ffi", "--allow-env", "main.ts"]
+CMD ["deno", "run", "--allow-net", "--allow-read=/mnt,/deno-dir,/app/api/icon", "--allow-ffi", "--allow-env", "main.ts"]

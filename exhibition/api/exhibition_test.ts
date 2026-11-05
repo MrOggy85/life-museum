@@ -1,6 +1,6 @@
 import { assertEquals, assertNotEquals } from '@std/assert';
 import { jstDate, pickForDay, previousDay } from './rotation.ts';
-import { makeHandler } from './server.ts';
+import { makeHandler, withIcons } from './server.ts';
 
 Deno.test('rotation: stable per day, never repeats yesterday, handles 0 and 1', () => {
   const ids = ['a', 'b', 'c', 'd'];
@@ -54,7 +54,7 @@ Deno.test('serves only the rendered exhibition; never .rejected or unrendered', 
   const { handler, put } = await fixture();
   await put('unrendered', '---\ntitle: U\n---\n', null);
   const r = await get(handler, '/');
-  assertEquals([r.status, await r.text()], [200, '<p>SHOWN</p>']);
+  assertEquals([r.status, await r.text()], [200, withIcons('<p>SHOWN</p>')]);
   assertEquals(r.headers.get('content-security-policy')?.includes("default-src 'none'"), true);
 });
 
@@ -103,7 +103,7 @@ Deno.test('an exhibition created today is held back until tomorrow, unless it is
     `${root}/collection/fresh/meta.json`,
     JSON.stringify({ created_at: '2026-10-01T02:00:00Z' }),
   );
-  assertEquals(await (await get(handler, '/')).text(), '<p>SHOWN</p>');
+  assertEquals(await (await get(handler, '/')).text(), withIcons('<p>SHOWN</p>'));
 });
 
 Deno.test('player script is served with a CSP that allows only same-origin scripts', async () => {
@@ -113,4 +113,23 @@ Deno.test('player script is served with a CSP that allows only same-origin scrip
   assertEquals((await r.text()).includes('IntersectionObserver'), true);
   const page = await get(handler, '/');
   assertEquals(page.headers.get('content-security-policy')?.includes("script-src 'self'"), true);
+});
+
+Deno.test('home-screen icon: served by exact name, linked from the page, allowed by the CSP', async () => {
+  const handler = makeHandler({ collectionDir: await Deno.makeTempDir(), media: { find: () => null } as never });
+  const png = await handler(new Request('http://x/icon/icon-180.png'));
+  assertEquals(png.status, 200);
+  assertEquals(png.headers.get('content-type'), 'image/png');
+  await png.body?.cancel();
+  for (const bad of ['/icon/head.html', '/icon/../server.ts', '/icon/icon.svg', '/icon/']) {
+    const r = await handler(new Request('http://x' + bad));
+    assertEquals(r.status, 404, bad);
+    await r.body?.cancel();
+  }
+  const page = await handler(new Request('http://x/'));
+  const html = await page.text();
+  assertEquals(html.includes('<link rel="apple-touch-icon" href="/icon/icon-180.png">'), true);
+  assertEquals(html.indexOf('apple-touch-icon') < html.indexOf('<title>'), true);
+  const csp = page.headers.get('content-security-policy') ?? '';
+  assertEquals(csp.includes("img-src 'self'") && csp.includes("manifest-src 'self'"), true);
 });
