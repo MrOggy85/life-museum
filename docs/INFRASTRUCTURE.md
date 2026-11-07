@@ -8,7 +8,7 @@ opinionated deployment of it. Code-level choices are in [`STACK.md`](STACK.md).
 ## Constraints
 
 - **One machine: `odin`**, the always-on home server. Intel N100 (Alder Lake-N), **4 cores,
-  15 GiB RAM, no GPU**, Debian, rootful Docker (`docker -c default …`). There is no
+  15 GiB RAM, no GPU**, Debian, rootless Docker (`docker -c rootless …`, since 2026-11-07). There is no
   second, more powerful machine.
 - **It is shared.** ~20 containers already run on it (Immich, Paperless, Mattermost,
   Postgres, Home Assistant, Syncthing, …) plus `~/poker-ai`, which is the largest consumer
