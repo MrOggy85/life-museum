@@ -87,7 +87,7 @@ export function makeVlmStage(cfg: VlmConfig): Stage {
 
 async function docker(args: string[], timeoutMs = 120_000): Promise<string> {
   const out = await new Deno.Command('docker', {
-    args: ['-c', 'default', ...args],
+    args: ['-c', 'rootless', ...args],
     stdout: 'piped',
     stderr: 'piped',
     signal: AbortSignal.timeout(timeoutMs),
